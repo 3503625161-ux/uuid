@@ -6,7 +6,7 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @copyright Copyright (c) Ben Ramsey <ben@benramsey.com>
+ * @copyright Copyright (c) Ben Ramsey <ben@ramsey.dev>
  * @license http://opensource.org/licenses/MIT MIT
  */
 
@@ -14,7 +14,7 @@ declare(strict_types=1);
 
 namespace Ramsey\Uuid\Benchmark;
 
-use Ramsey\Uuid\FeatureSet;
+use Ramsey\Uuid\FeatureSetBuilder;
 use Ramsey\Uuid\Guid\Guid;
 use Ramsey\Uuid\UuidFactory;
 use Ramsey\Uuid\UuidInterface;
@@ -29,7 +29,7 @@ final class GuidConversionBench
 
     public function __construct()
     {
-        $factory = new UuidFactory(new FeatureSet(useGuids: true));
+        $factory = new UuidFactory(FeatureSetBuilder::fromDefaults(true)->build());
 
         $this->uuid = $factory->fromBytes(self::UUID_BYTES[0]);
 

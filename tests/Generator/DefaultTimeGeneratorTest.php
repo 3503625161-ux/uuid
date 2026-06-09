@@ -12,7 +12,7 @@ use Ramsey\Uuid\BinaryUtils;
 use Ramsey\Uuid\Converter\TimeConverterInterface;
 use Ramsey\Uuid\Exception\RandomSourceException;
 use Ramsey\Uuid\Exception\TimeSourceException;
-use Ramsey\Uuid\FeatureSet;
+use Ramsey\Uuid\FeatureSetBuilder;
 use Ramsey\Uuid\Generator\DefaultTimeGenerator;
 use Ramsey\Uuid\Provider\NodeProviderInterface;
 use Ramsey\Uuid\Provider\Time\FixedTimeProvider;
@@ -199,7 +199,7 @@ class DefaultTimeGeneratorTest extends TestCase
     public function testDefaultTimeGeneratorThrowsExceptionForLargeGeneratedValue(): void
     {
         $timeProvider = new FixedTimeProvider(new Time('1832455114570', '955162'));
-        $featureSet = new FeatureSet();
+        $featureSet = FeatureSetBuilder::fromDefaults()->build();
         $timeGenerator = new DefaultTimeGenerator(
             $featureSet->getNodeProvider(),
             $featureSet->getTimeConverter(),
