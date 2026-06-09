@@ -1920,6 +1920,53 @@ class UuidTest extends TestCase
         );
     }
 
+    public function testGetVersion(): void
+    {
+        $this->assertNull(Uuid::getVersion('not-a-uuid'));
+        $this->assertNull(Uuid::getVersion(Uuid::NIL));
+        $this->assertNull(Uuid::getVersion(Uuid::MAX));
+
+        $this->assertSame(1, Uuid::getVersion('ff6f8cb0-c57d-11e1-9b21-0800200c9a66'));
+        $this->assertSame(2, Uuid::getVersion('ff6f8cb0-c57d-21e1-9b21-0800200c9a66'));
+        $this->assertSame(3, Uuid::getVersion('ff6f8cb0-c57d-31e1-9b21-0800200c9a66'));
+        $this->assertSame(4, Uuid::getVersion('ff6f8cb0-c57d-41e1-9b21-0800200c9a66'));
+        $this->assertSame(5, Uuid::getVersion('ff6f8cb0-c57d-51e1-9b21-0800200c9a66'));
+        $this->assertSame(6, Uuid::getVersion('ff6f8cb0-c57d-61e1-9b21-0800200c9a66'));
+        $this->assertSame(7, Uuid::getVersion('ff6f8cb0-c57d-71e1-9b21-0800200c9a66'));
+        $this->assertSame(8, Uuid::getVersion('ff6f8cb0-c57d-81e1-9b21-0800200c9a66'));
+        $this->assertSame(1, Uuid::getVersion('urn:uuid:ff6f8cb0-c57d-11e1-9b21-0800200c9a66'));
+        $this->assertSame(1, Uuid::getVersion('{ff6f8cb0-c57d-11e1-9b21-0800200c9a66}'));
+        $this->assertSame(1, Uuid::getVersion('ff6f8cb0c57d11e19b210800200c9a66'));
+    }
+
+    public function testGetVariant(): void
+    {
+        $this->assertNull(Uuid::getVariant('not-a-uuid'));
+
+        $this->assertSame(Uuid::RESERVED_NCS, Uuid::getVariant(Uuid::NIL));
+        $this->assertSame(Uuid::RESERVED_FUTURE, Uuid::getVariant(Uuid::MAX));
+
+        $this->assertSame(Uuid::RESERVED_NCS, Uuid::getVariant('ff6f8cb0-c57d-11e1-0b21-0800200c9a66'));
+        $this->assertSame(Uuid::RESERVED_NCS, Uuid::getVariant('ff6f8cb0-c57d-11e1-1b21-0800200c9a66'));
+        $this->assertSame(Uuid::RESERVED_NCS, Uuid::getVariant('ff6f8cb0-c57d-11e1-2b21-0800200c9a66'));
+        $this->assertSame(Uuid::RESERVED_NCS, Uuid::getVariant('ff6f8cb0-c57d-11e1-3b21-0800200c9a66'));
+        $this->assertSame(Uuid::RESERVED_NCS, Uuid::getVariant('ff6f8cb0-c57d-11e1-4b21-0800200c9a66'));
+        $this->assertSame(Uuid::RESERVED_NCS, Uuid::getVariant('ff6f8cb0-c57d-11e1-5b21-0800200c9a66'));
+        $this->assertSame(Uuid::RESERVED_NCS, Uuid::getVariant('ff6f8cb0-c57d-11e1-6b21-0800200c9a66'));
+        $this->assertSame(Uuid::RESERVED_NCS, Uuid::getVariant('ff6f8cb0-c57d-11e1-7b21-0800200c9a66'));
+
+        $this->assertSame(Uuid::RFC_4122, Uuid::getVariant('ff6f8cb0-c57d-11e1-8b21-0800200c9a66'));
+        $this->assertSame(Uuid::RFC_4122, Uuid::getVariant('ff6f8cb0-c57d-11e1-9b21-0800200c9a66'));
+        $this->assertSame(Uuid::RFC_4122, Uuid::getVariant('ff6f8cb0-c57d-11e1-ab21-0800200c9a66'));
+        $this->assertSame(Uuid::RFC_4122, Uuid::getVariant('ff6f8cb0-c57d-11e1-bb21-0800200c9a66'));
+
+        $this->assertSame(Uuid::RESERVED_MICROSOFT, Uuid::getVariant('ff6f8cb0-c57d-11e1-cb21-0800200c9a66'));
+        $this->assertSame(Uuid::RESERVED_MICROSOFT, Uuid::getVariant('ff6f8cb0-c57d-11e1-db21-0800200c9a66'));
+
+        $this->assertSame(Uuid::RESERVED_FUTURE, Uuid::getVariant('ff6f8cb0-c57d-11e1-eb21-0800200c9a66'));
+        $this->assertSame(Uuid::RESERVED_FUTURE, Uuid::getVariant('ff6f8cb0-c57d-11e1-fb21-0800200c9a66'));
+    }
+
     /**
      * @return array<array{0: string, 1?: array<int | string>}>
      */

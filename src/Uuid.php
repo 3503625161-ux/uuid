@@ -727,4 +727,99 @@ class Uuid implements UuidInterface
 
         throw new UnsupportedOperationException('The provided factory does not support the uuid8() method');
     }
+
+    /**
+     * Returns the version of a given UUID string
+     *
+     * @param string $uuid A UUID string
+     *
+     * @return int|null The version of the UUID, or null if the UUID is invalid or not an RFC 4122 variant
+     *
+     * @pure
+     */
+    public static function getVersion(string $uuid): ?int
+    {
+        /** @phpstan-ignore possiblyImpure.functionCall */
+        $parsedUuid = str_replace(['urn:', 'uuid:', '{', '}', '-'], '', strtolower($uuid));
+
+        if (strlen($parsedUuid) !== 32) {
+            return null;
+        }
+
+        /** @phpstan-ignore possiblyImpure.functionCall */
+        $withDashes = substr($parsedUuid, 0, 8) . '-' . substr($parsedUuid, 8, 4) . '-' . substr($parsedUuid, 12, 4) . '-' . substr($parsedUuid, 16, 4) . '-' . substr($parsedUuid, 20);
+
+        if (!self::isValid($withDashes)) {
+            return null;
+        }
+
+        if ($parsedUuid === '00000000000000000000000000000000') {
+            return null;
+        }
+
+        if ($parsedUuid === 'ffffffffffffffffffffffffffffffff') {
+            return null;
+        }
+
+        /** @phpstan-ignore possiblyImpure.functionCall */
+        $variantDigit = (int) hexdec($parsedUuid[16]);
+
+        if ($variantDigit < 8 || $variantDigit > 11) {
+            return null;
+        }
+
+        /** @phpstan-ignore possiblyImpure.functionCall */
+        return (int) hexdec($parsedUuid[12]);
+    }
+
+    /**
+     * Returns the variant of a given UUID string
+     *
+     * @param string $uuid A UUID string
+     *
+     * @return int|null The variant of the UUID, or null if the UUID is invalid
+     *
+     * @pure
+     */
+    public static function getVariant(string $uuid): ?int
+    {
+        /** @phpstan-ignore possiblyImpure.functionCall */
+        $parsedUuid = str_replace(['urn:', 'uuid:', '{', '}', '-'], '', strtolower($uuid));
+
+        if (strlen($parsedUuid) !== 32) {
+            return null;
+        }
+
+        /** @phpstan-ignore possiblyImpure.functionCall */
+        $withDashes = substr($parsedUuid, 0, 8) . '-' . substr($parsedUuid, 8, 4) . '-' . substr($parsedUuid, 12, 4) . '-' . substr($parsedUuid, 16, 4) . '-' . substr($parsedUuid, 20);
+
+        if (!self::isValid($withDashes)) {
+            return null;
+        }
+
+        if ($parsedUuid === '00000000000000000000000000000000') {
+            return self::RESERVED_NCS;
+        }
+
+        if ($parsedUuid === 'ffffffffffffffffffffffffffffffff') {
+            return self::RESERVED_FUTURE;
+        }
+
+        /** @phpstan-ignore possiblyImpure.functionCall */
+        $variantDigit = (int) hexdec($parsedUuid[16]);
+
+        if ($variantDigit >= 8 && $variantDigit <= 11) {
+            return self::RFC_4122;
+        }
+
+        if ($variantDigit >= 12 && $variantDigit <= 13) {
+            return self::RESERVED_MICROSOFT;
+        }
+
+        if ($variantDigit >= 14) {
+            return self::RESERVED_FUTURE;
+        }
+
+        return self::RESERVED_NCS;
+    }
 }
