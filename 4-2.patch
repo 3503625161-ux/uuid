@@ -1,0 +1,67 @@
+diff --git a/src/Uuid.php b/src/Uuid.php
+index 0f05bbf..2eb85e9 100644
+--- a/src/Uuid.php
++++ b/src/Uuid.php
+@@ -400,6 +400,15 @@ class Uuid implements UuidInterface
+         return new IntegerObject($this->numberConverter->fromHex($this->getHex()->toString()));
+     }
+ 
++    public function getUnixTimestamp(): ?int
++    {
++        if ($this->fields->getVersion() !== 7) {
++            return null;
++        }
++
++        return (int) hexdec(substr($this->fields->getTimestamp()->toString(), -12));
++    }
++
+     public function getUrn(): string
+     {
+         return 'urn:uuid:' . $this->toString();
+diff --git a/src/UuidInterface.php b/src/UuidInterface.php
+index 38525cb..575e5d8 100644
+--- a/src/UuidInterface.php
++++ b/src/UuidInterface.php
+@@ -90,8 +90,16 @@ interface UuidInterface extends
+      */
+     public function getUrn(): string;
+ 
++    /**
++     * Returns the millisecond-level Unix timestamp if the UUID is a version 7 UUID
++     *
++     * @return int|null A millisecond-level Unix timestamp, or null if not a version 7 UUID
++     */
++    public function getUnixTimestamp(): ?int;
++
+     /**
+      * Returns the string standard representation of the UUID
++
+      *
+      * @return non-empty-string
+      *
+diff --git a/tests/UuidTest.php b/tests/UuidTest.php
+index 494f417..96dd29b 100644
+--- a/tests/UuidTest.php
++++ b/tests/UuidTest.php
+@@ -487,6 +487,21 @@ class UuidTest extends TestCase
+         $uuid->getTimestampHex();
+     }
+ 
++    public function testGetUnixTimestamp(): void
++    {
++        $v7 = Uuid::uuid7();
++        $this->assertGreaterThan(0, $v7->getUnixTimestamp());
++
++        $v1 = Uuid::uuid1();
++        $this->assertNull($v1->getUnixTimestamp());
++
++        $v4 = Uuid::uuid4();
++        $this->assertNull($v4->getUnixTimestamp());
++
++        $v6 = Uuid::uuid6();
++        $this->assertNull($v6->getUnixTimestamp());
++    }
++
+     public function testGetUrn(): void
+     {
+         $uuid = Uuid::fromString('ff6f8cb0-c57d-11e1-9b21-0800200c9a66');

@@ -487,6 +487,21 @@ class UuidTest extends TestCase
         $uuid->getTimestampHex();
     }
 
+    public function testGetUnixTimestamp(): void
+    {
+        $v7 = Uuid::uuid7();
+        $this->assertGreaterThan(0, $v7->getUnixTimestamp());
+
+        $v1 = Uuid::uuid1();
+        $this->assertNull($v1->getUnixTimestamp());
+
+        $v4 = Uuid::uuid4();
+        $this->assertNull($v4->getUnixTimestamp());
+
+        $v6 = Uuid::uuid6();
+        $this->assertNull($v6->getUnixTimestamp());
+    }
+
     public function testGetUrn(): void
     {
         $uuid = Uuid::fromString('ff6f8cb0-c57d-11e1-9b21-0800200c9a66');

@@ -400,6 +400,15 @@ class Uuid implements UuidInterface
         return new IntegerObject($this->numberConverter->fromHex($this->getHex()->toString()));
     }
 
+    public function getUnixTimestamp(): ?int
+    {
+        if ($this->fields->getVersion() !== 7) {
+            return null;
+        }
+
+        return (int) hexdec(substr($this->fields->getTimestamp()->toString(), -12));
+    }
+
     public function getUrn(): string
     {
         return 'urn:uuid:' . $this->toString();
