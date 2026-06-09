@@ -59,26 +59,15 @@ class DceSecurityGenerator implements DceSecurityGeneratorInterface
     ) {
     }
 
-    public function generate(
-        int $localDomain,
-        ?IntegerObject $localIdentifier = null,
-        ?Hexadecimal $node = null,
-        ?int $clockSeq = null,
-    ): string {
+    private function validateDomain(int $localDomain): void
+    {
         if (!in_array($localDomain, self::DOMAINS)) {
             throw new DceSecurityException('Local domain must be a valid DCE Security domain');
         }
+    }
 
-        if ($localIdentifier && $localIdentifier->isNegative()) {
-            throw new DceSecurityException(
-                'Local identifier out of bounds; it must be a value between 0 and 4294967295',
-            );
-        }
-
-        if ($clockSeq > self::CLOCK_SEQ_HIGH || $clockSeq < self::CLOCK_SEQ_LOW) {
-            throw new DceSecurityException('Clock sequence out of bounds; it must be a value between 0 and 63');
-        }
-
+    private function resolveLocalIdentifier(int $localDomain, ?IntegerObject $localIdentifier): IntegerObject
+    {
         switch ($localDomain) {
             case Uuid::DCE_DOMAIN_ORG:
                 if ($localIdentifier === null) {
@@ -99,6 +88,29 @@ class DceSecurityGenerator implements DceSecurityGeneratorInterface
                 }
 
                 break;
+        }
+
+        if ($localIdentifier->isNegative()) {
+            throw new DceSecurityException(
+                'Local identifier out of bounds; it must be a value between 0 and 4294967295',
+            );
+        }
+
+        return $localIdentifier;
+    }
+
+    public function generate(
+        int $localDomain,
+        ?IntegerObject $localIdentifier = null,
+        ?Hexadecimal $node = null,
+        ?int $clockSeq = null,
+    ): string {
+        $this->validateDomain($localDomain);
+
+        $localIdentifier = $this->resolveLocalIdentifier($localDomain, $localIdentifier);
+
+        if ($clockSeq > self::CLOCK_SEQ_HIGH || $clockSeq < self::CLOCK_SEQ_LOW) {
+            throw new DceSecurityException('Clock sequence out of bounds; it must be a value between 0 and 63');
         }
 
         $identifierHex = $this->numberConverter->toHex($localIdentifier->toString());
