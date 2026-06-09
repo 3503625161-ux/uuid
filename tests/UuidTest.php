@@ -559,6 +559,58 @@ class UuidTest extends TestCase
         $this->assertSame(5, $uuid->getVersion());
     }
 
+    /**
+     * @dataProvider provideStaticVersionValues
+     */
+    public function testStaticGetVersion(string $uuid, ?int $version): void
+    {
+        $this->assertSame($version, Uuid::getVersion($uuid));
+    }
+
+    /**
+     * @return array<array{0: string, 1: int | null}>
+     */
+    public function provideStaticVersionValues(): array
+    {
+        return [
+            ['ff6f8cb0-c57d-11e1-9b21-0800200c9a66', 1],
+            ['{6fa459ea-ee8a-2ca4-894e-db77e160355e}', 2],
+            ['URN:UUID:6fa459ea-ee8a-3ca4-894e-db77e160355e', 3],
+            ['6fabf0bc-603a-42f2-925b-d9f779bd0032', 4],
+            ['886313e1-3b8a-5372-9b90-0c9aee199e5d', 5],
+            ['1ea78deb-37ce-625e-8f1a-025041000001', 6],
+            ['018339f0-1b83-71e1-9b21-0800200c9a66', 7],
+            ['ff6f8cb0-c57d-81e1-9b21-0800200c9a66', 8],
+            [Uuid::NIL, null],
+            [Uuid::MAX, null],
+            ['not-a-uuid', null],
+        ];
+    }
+
+    /**
+     * @dataProvider provideStaticVariantValues
+     */
+    public function testStaticGetVariant(string $uuid, ?int $variant): void
+    {
+        $this->assertSame($variant, Uuid::getVariant($uuid));
+    }
+
+    /**
+     * @return array<array{0: string, 1: int | null}>
+     */
+    public function provideStaticVariantValues(): array
+    {
+        return [
+            ['{ff6f8cb0-c57d-11e1-0b21-0800200c9a66}', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-8b21-0800200c9a66', Uuid::RFC_4122],
+            ['URN:UUID:ff6f8cb0-c57d-11e1-cb21-0800200c9a66', Uuid::RESERVED_MICROSOFT],
+            ['ff6f8cb0-c57d-11e1-eb21-0800200c9a66', Uuid::RESERVED_FUTURE],
+            [Uuid::NIL, Uuid::RESERVED_NCS],
+            [Uuid::MAX, Uuid::RESERVED_FUTURE],
+            ['not-a-uuid', null],
+        ];
+    }
+
     public function testToString(): void
     {
         // Check with a recent date

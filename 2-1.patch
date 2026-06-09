@@ -1,0 +1,177 @@
+diff --git a/src/Uuid.php b/src/Uuid.php
+index 0f05bbf..95e8a32 100644
+--- a/src/Uuid.php
++++ b/src/Uuid.php
+@@ -30,6 +30,8 @@ use ValueError;
+ 
+ use function assert;
+ use function bin2hex;
++use function debug_backtrace;
++use function hexdec;
+ use function method_exists;
+ use function preg_match;
+ use function sprintf;
+@@ -39,6 +41,8 @@ use function strlen;
+ use function strtolower;
+ use function substr;
+ 
++use const DEBUG_BACKTRACE_PROVIDE_OBJECT;
++
+ /**
+  * Uuid provides constants and static methods for working with and generating UUIDs
+  *
+@@ -46,7 +50,10 @@ use function substr;
+  */
+ class Uuid implements UuidInterface
+ {
+-    use DeprecatedUuidMethodsTrait;
++    use DeprecatedUuidMethodsTrait {
++        getVariant as private getInstanceVariant;
++        getVersion as private getInstanceVersion;
++    }
+ 
+     /**
+      * When this namespace is specified, the name string is a fully qualified domain name
+@@ -582,6 +589,79 @@ class Uuid implements UuidInterface
+         return self::getFactory()->getValidator()->validate($uuid);
+     }
+ 
++    public static function getVersion(string $uuid = ''): ?int
++    {
++        if ($uuid === '') {
++            $calledOnInstance = self::getCalledOnInstance();
++
++            if ($calledOnInstance !== null) {
++                return $calledOnInstance->getInstanceVersion();
++            }
++        }
++
++        /** @phpstan-ignore possiblyImpure.functionCall */
++        $uuid = str_replace(['urn:', 'uuid:', 'URN:', 'UUID:', '{', '}', '-'], '', $uuid);
++
++        if (strlen($uuid) !== 32 || preg_match('/\A[0-9A-Fa-f]{32}\z/D', $uuid) !== 1) {
++            return null;
++        }
++
++        $uuid = strtolower($uuid);
++
++        if ($uuid === '00000000000000000000000000000000' || $uuid === 'ffffffffffffffffffffffffffffffff') {
++            return null;
++        }
++
++        return hexdec(substr($uuid, 12, 1));
++    }
++
++    public static function getVariant(string $uuid = ''): ?int
++    {
++        if ($uuid === '') {
++            $calledOnInstance = self::getCalledOnInstance();
++
++            if ($calledOnInstance !== null) {
++                return $calledOnInstance->getInstanceVariant();
++            }
++        }
++
++        /** @phpstan-ignore possiblyImpure.functionCall */
++        $uuid = str_replace(['urn:', 'uuid:', 'URN:', 'UUID:', '{', '}', '-'], '', $uuid);
++
++        if (strlen($uuid) !== 32 || preg_match('/\A[0-9A-Fa-f]{32}\z/D', $uuid) !== 1) {
++            return null;
++        }
++
++        $uuid = strtolower($uuid);
++
++        if ($uuid === 'ffffffffffffffffffffffffffffffff') {
++            return self::RESERVED_FUTURE;
++        }
++
++        if ($uuid === '00000000000000000000000000000000') {
++            return self::RESERVED_NCS;
++        }
++
++        return match (substr($uuid, 16, 1)) {
++            '8', '9', 'a', 'b' => self::RFC_4122,
++            'c', 'd' => self::RESERVED_MICROSOFT,
++            'e', 'f' => self::RESERVED_FUTURE,
++            default => self::RESERVED_NCS,
++        };
++    }
++
++    private static function getCalledOnInstance(): ?self
++    {
++        /** @var array<int, array{object?: object}> $backtrace */
++        $backtrace = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 1);
++
++        if (!isset($backtrace[0]['object']) || !$backtrace[0]['object'] instanceof self) {
++            return null;
++        }
++
++        return $backtrace[0]['object'];
++    }
++
+     /**
+      * Returns a version 1 (Gregorian time) UUID from a host ID, sequence number, and the current time
+      *
+diff --git a/tests/UuidTest.php b/tests/UuidTest.php
+index 494f417..6199c22 100644
+--- a/tests/UuidTest.php
++++ b/tests/UuidTest.php
+@@ -559,6 +559,58 @@ class UuidTest extends TestCase
+         $this->assertSame(5, $uuid->getVersion());
+     }
+ 
++    /**
++     * @dataProvider provideStaticVersionValues
++     */
++    public function testStaticGetVersion(string $uuid, ?int $version): void
++    {
++        $this->assertSame($version, Uuid::getVersion($uuid));
++    }
++
++    /**
++     * @return array<array{0: string, 1: int | null}>
++     */
++    public function provideStaticVersionValues(): array
++    {
++        return [
++            ['ff6f8cb0-c57d-11e1-9b21-0800200c9a66', 1],
++            ['{6fa459ea-ee8a-2ca4-894e-db77e160355e}', 2],
++            ['URN:UUID:6fa459ea-ee8a-3ca4-894e-db77e160355e', 3],
++            ['6fabf0bc-603a-42f2-925b-d9f779bd0032', 4],
++            ['886313e1-3b8a-5372-9b90-0c9aee199e5d', 5],
++            ['1ea78deb-37ce-625e-8f1a-025041000001', 6],
++            ['018339f0-1b83-71e1-9b21-0800200c9a66', 7],
++            ['ff6f8cb0-c57d-81e1-9b21-0800200c9a66', 8],
++            [Uuid::NIL, null],
++            [Uuid::MAX, null],
++            ['not-a-uuid', null],
++        ];
++    }
++
++    /**
++     * @dataProvider provideStaticVariantValues
++     */
++    public function testStaticGetVariant(string $uuid, ?int $variant): void
++    {
++        $this->assertSame($variant, Uuid::getVariant($uuid));
++    }
++
++    /**
++     * @return array<array{0: string, 1: int | null}>
++     */
++    public function provideStaticVariantValues(): array
++    {
++        return [
++            ['{ff6f8cb0-c57d-11e1-0b21-0800200c9a66}', Uuid::RESERVED_NCS],
++            ['ff6f8cb0-c57d-11e1-8b21-0800200c9a66', Uuid::RFC_4122],
++            ['URN:UUID:ff6f8cb0-c57d-11e1-cb21-0800200c9a66', Uuid::RESERVED_MICROSOFT],
++            ['ff6f8cb0-c57d-11e1-eb21-0800200c9a66', Uuid::RESERVED_FUTURE],
++            [Uuid::NIL, Uuid::RESERVED_NCS],
++            [Uuid::MAX, Uuid::RESERVED_FUTURE],
++            ['not-a-uuid', null],
++        ];
++    }
++
+     public function testToString(): void
+     {
+         // Check with a recent date

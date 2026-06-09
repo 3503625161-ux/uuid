@@ -30,6 +30,8 @@ use ValueError;
 
 use function assert;
 use function bin2hex;
+use function debug_backtrace;
+use function hexdec;
 use function method_exists;
 use function preg_match;
 use function sprintf;
@@ -39,6 +41,8 @@ use function strlen;
 use function strtolower;
 use function substr;
 
+use const DEBUG_BACKTRACE_PROVIDE_OBJECT;
+
 /**
  * Uuid provides constants and static methods for working with and generating UUIDs
  *
@@ -46,7 +50,10 @@ use function substr;
  */
 class Uuid implements UuidInterface
 {
-    use DeprecatedUuidMethodsTrait;
+    use DeprecatedUuidMethodsTrait {
+        getVariant as private getInstanceVariant;
+        getVersion as private getInstanceVersion;
+    }
 
     /**
      * When this namespace is specified, the name string is a fully qualified domain name
@@ -580,6 +587,79 @@ class Uuid implements UuidInterface
     {
         /** @phpstan-ignore possiblyImpure.methodCall, possiblyImpure.methodCall */
         return self::getFactory()->getValidator()->validate($uuid);
+    }
+
+    public static function getVersion(string $uuid = ''): ?int
+    {
+        if ($uuid === '') {
+            $calledOnInstance = self::getCalledOnInstance();
+
+            if ($calledOnInstance !== null) {
+                return $calledOnInstance->getInstanceVersion();
+            }
+        }
+
+        /** @phpstan-ignore possiblyImpure.functionCall */
+        $uuid = str_replace(['urn:', 'uuid:', 'URN:', 'UUID:', '{', '}', '-'], '', $uuid);
+
+        if (strlen($uuid) !== 32 || preg_match('/\A[0-9A-Fa-f]{32}\z/D', $uuid) !== 1) {
+            return null;
+        }
+
+        $uuid = strtolower($uuid);
+
+        if ($uuid === '00000000000000000000000000000000' || $uuid === 'ffffffffffffffffffffffffffffffff') {
+            return null;
+        }
+
+        return hexdec(substr($uuid, 12, 1));
+    }
+
+    public static function getVariant(string $uuid = ''): ?int
+    {
+        if ($uuid === '') {
+            $calledOnInstance = self::getCalledOnInstance();
+
+            if ($calledOnInstance !== null) {
+                return $calledOnInstance->getInstanceVariant();
+            }
+        }
+
+        /** @phpstan-ignore possiblyImpure.functionCall */
+        $uuid = str_replace(['urn:', 'uuid:', 'URN:', 'UUID:', '{', '}', '-'], '', $uuid);
+
+        if (strlen($uuid) !== 32 || preg_match('/\A[0-9A-Fa-f]{32}\z/D', $uuid) !== 1) {
+            return null;
+        }
+
+        $uuid = strtolower($uuid);
+
+        if ($uuid === 'ffffffffffffffffffffffffffffffff') {
+            return self::RESERVED_FUTURE;
+        }
+
+        if ($uuid === '00000000000000000000000000000000') {
+            return self::RESERVED_NCS;
+        }
+
+        return match (substr($uuid, 16, 1)) {
+            '8', '9', 'a', 'b' => self::RFC_4122,
+            'c', 'd' => self::RESERVED_MICROSOFT,
+            'e', 'f' => self::RESERVED_FUTURE,
+            default => self::RESERVED_NCS,
+        };
+    }
+
+    private static function getCalledOnInstance(): ?self
+    {
+        /** @var array<int, array{object?: object}> $backtrace */
+        $backtrace = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 1);
+
+        if (!isset($backtrace[0]['object']) || !$backtrace[0]['object'] instanceof self) {
+            return null;
+        }
+
+        return $backtrace[0]['object'];
     }
 
     /**
