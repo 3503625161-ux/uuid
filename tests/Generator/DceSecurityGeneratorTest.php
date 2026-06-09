@@ -156,6 +156,42 @@ class DceSecurityGeneratorTest extends TestCase
         $generator->generate(Uuid::DCE_DOMAIN_ORG);
     }
 
+    public function testGenerateThrowsExceptionForNegativeProviderUid(): void
+    {
+        $numberConverter = Mockery::mock(NumberConverterInterface::class);
+        $timeGenerator = Mockery::mock(TimeGeneratorInterface::class);
+        $dceSecurityProvider = Mockery::mock(DceSecurityProviderInterface::class, [
+            'getUid' => new IntegerObject(-1),
+        ]);
+
+        $generator = new DceSecurityGenerator($numberConverter, $timeGenerator, $dceSecurityProvider);
+
+        $this->expectException(DceSecurityException::class);
+        $this->expectExceptionMessage(
+            'Local identifier out of bounds; it must be a value between 0 and 4294967295'
+        );
+
+        $generator->generate(Uuid::DCE_DOMAIN_PERSON);
+    }
+
+    public function testGenerateThrowsExceptionForNegativeProviderGid(): void
+    {
+        $numberConverter = Mockery::mock(NumberConverterInterface::class);
+        $timeGenerator = Mockery::mock(TimeGeneratorInterface::class);
+        $dceSecurityProvider = Mockery::mock(DceSecurityProviderInterface::class, [
+            'getGid' => new IntegerObject(-1),
+        ]);
+
+        $generator = new DceSecurityGenerator($numberConverter, $timeGenerator, $dceSecurityProvider);
+
+        $this->expectException(DceSecurityException::class);
+        $this->expectExceptionMessage(
+            'Local identifier out of bounds; it must be a value between 0 and 4294967295'
+        );
+
+        $generator->generate(Uuid::DCE_DOMAIN_GROUP);
+    }
+
     public function testClockSequenceLowerBounds(): void
     {
         $dceSecurityProvider = Mockery::mock(DceSecurityProviderInterface::class);

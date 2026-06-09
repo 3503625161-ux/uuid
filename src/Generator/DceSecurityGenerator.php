@@ -6,7 +6,7 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @copyright Copyright (c) Ben Ramsey <ben@benramsey.com>
+ * @copyright Copyright (c) Ben Ramsey <ben@ramsey.com>
  * @license http://opensource.org/licenses/MIT MIT
  */
 
@@ -65,46 +65,15 @@ class DceSecurityGenerator implements DceSecurityGeneratorInterface
         ?Hexadecimal $node = null,
         ?int $clockSeq = null,
     ): string {
-        if (!in_array($localDomain, self::DOMAINS)) {
-            throw new DceSecurityException('Local domain must be a valid DCE Security domain');
-        }
-
-        if ($localIdentifier && $localIdentifier->isNegative()) {
-            throw new DceSecurityException(
-                'Local identifier out of bounds; it must be a value between 0 and 4294967295',
-            );
-        }
+        $this->validateDomain($localDomain);
+        $localIdentifier = $this->resolveLocalIdentifier($localDomain, $localIdentifier);
 
         if ($clockSeq > self::CLOCK_SEQ_HIGH || $clockSeq < self::CLOCK_SEQ_LOW) {
             throw new DceSecurityException('Clock sequence out of bounds; it must be a value between 0 and 63');
         }
 
-        switch ($localDomain) {
-            case Uuid::DCE_DOMAIN_ORG:
-                if ($localIdentifier === null) {
-                    throw new DceSecurityException('A local identifier must be provided for the org domain');
-                }
-
-                break;
-            case Uuid::DCE_DOMAIN_PERSON:
-                if ($localIdentifier === null) {
-                    $localIdentifier = $this->dceSecurityProvider->getUid();
-                }
-
-                break;
-            case Uuid::DCE_DOMAIN_GROUP:
-            default:
-                if ($localIdentifier === null) {
-                    $localIdentifier = $this->dceSecurityProvider->getGid();
-                }
-
-                break;
-        }
-
         $identifierHex = $this->numberConverter->toHex($localIdentifier->toString());
 
-        // The maximum value for the local identifier is 0xffffffff, or 4,294,967,295. This is 8 hexadecimal digits, so
-        // if the length of hexadecimal digits is greater than 8, we know the value is greater than 0xffffffff.
         if (strlen($identifierHex) > 8) {
             throw new DceSecurityException(
                 'Local identifier out of bounds; it must be a value between 0 and 4294967295',
@@ -118,16 +87,46 @@ class DceSecurityGenerator implements DceSecurityGeneratorInterface
             $node = $node->toString();
         }
 
-        // Shift the clock sequence 8 bits to the left, so it matches 0x3f00.
         if ($clockSeq !== null) {
             $clockSeq = $clockSeq << 8;
         }
 
         $bytes = $this->timeGenerator->generate($node, $clockSeq);
-
-        // Replace bytes in the time-based UUID with DCE Security values.
         $bytes = substr_replace($bytes, $identifierBytes, 0, 4);
 
         return substr_replace($bytes, $domainByte, 9, 1);
+    }
+
+    private function validateDomain(int $localDomain): void
+    {
+        if (!in_array($localDomain, self::DOMAINS, true)) {
+            throw new DceSecurityException('Local domain must be a valid DCE Security domain');
+        }
+    }
+
+    private function resolveLocalIdentifier(int $localDomain, ?IntegerObject $localIdentifier): IntegerObject
+    {
+        if ($localIdentifier === null) {
+            switch ($localDomain) {
+                case Uuid::DCE_DOMAIN_PERSON:
+                    $localIdentifier = $this->dceSecurityProvider->getUid();
+
+                    break;
+                case Uuid::DCE_DOMAIN_GROUP:
+                    $localIdentifier = $this->dceSecurityProvider->getGid();
+
+                    break;
+                case Uuid::DCE_DOMAIN_ORG:
+                    throw new DceSecurityException('A local identifier must be provided for the org domain');
+            }
+        }
+
+        if ($localIdentifier->isNegative()) {
+            throw new DceSecurityException(
+                'Local identifier out of bounds; it must be a value between 0 and 4294967295',
+            );
+        }
+
+        return $localIdentifier;
     }
 }
