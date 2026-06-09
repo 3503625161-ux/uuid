@@ -583,6 +583,79 @@ class Uuid implements UuidInterface
     }
 
     /**
+     * Returns the version number from a UUID string without instantiating a UUID object
+     *
+     * This is a pure string parsing method that extracts the version directly from
+     * position 14 of the UUID string, providing better performance for batch scanning
+     * of large files or UUID lists compared to parsing into full UUID objects.
+     *
+     * @param string $uuid A UUID string
+     *
+     * @return int|null The version number (1-8), or null if the string is not a valid UUID
+     *
+     * @pure
+     */
+    public static function getVersion(string $uuid): ?int
+    {
+        if (strlen($uuid) < 36) {
+            return null;
+        }
+
+        $versionChar = $uuid[14];
+
+        if ($versionChar >= '1' && $versionChar <= '8') {
+            return (int) $versionChar;
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns the variant number from a UUID string without instantiating a UUID object
+     *
+     * This is a pure string parsing method that extracts the variant directly from
+     * position 19 of the UUID string, providing better performance for batch scanning
+     * of large files or UUID lists compared to parsing into full UUID objects.
+     *
+     * @param string $uuid A UUID string
+     *
+     * @return int|null The variant number, or null if the string is not a valid UUID
+     *
+     * @see Uuid::RESERVED_NCS
+     * @see Uuid::RFC_4122
+     * @see Uuid::RESERVED_MICROSOFT
+     * @see Uuid::RESERVED_FUTURE
+     *
+     * @pure
+     */
+    public static function getVariant(string $uuid): ?int
+    {
+        if (strlen($uuid) < 36) {
+            return null;
+        }
+
+        $variantChar = strtolower($uuid[19]);
+
+        if ($variantChar >= '0' && $variantChar <= '7') {
+            return self::RESERVED_NCS;
+        }
+
+        if ($variantChar >= '8' && $variantChar <= 'b') {
+            return self::RFC_4122;
+        }
+
+        if ($variantChar === 'c' || $variantChar === 'd') {
+            return self::RESERVED_MICROSOFT;
+        }
+
+        if ($variantChar >= 'e' && $variantChar <= 'f') {
+            return self::RESERVED_FUTURE;
+        }
+
+        return null;
+    }
+
+    /**
      * Returns a version 1 (Gregorian time) UUID from a host ID, sequence number, and the current time
      *
      * @param Hexadecimal | int | string | null $node A 48-bit number representing the hardware address; this number may

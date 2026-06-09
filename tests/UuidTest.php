@@ -1933,4 +1933,77 @@ class UuidTest extends TestCase
             ['uuid5', [Uuid::NIL, 'foobar']],
         ];
     }
+
+    /**
+     * @param int|null $expectedVersion
+     *
+     * @dataProvider provideGetVersionCases
+     */
+    public function testGetVersion(string $uuid, ?int $expectedVersion): void
+    {
+        $this->assertSame($expectedVersion, Uuid::getVersion($uuid));
+    }
+
+    /**
+     * @return array<array{0: string, 1: int|null}>
+     */
+    public function provideGetVersionCases(): array
+    {
+        return [
+            ['ff6f8cb0-c57d-11e1-9b21-0800200c9a66', 1],
+            ['6fa459ea-ee8a-2ca4-894e-db77e160355e', 2],
+            ['6fa459ea-ee8a-3ca4-894e-db77e160355e', 3],
+            ['6fabf0bc-603a-42f2-925b-d9f779bd0032', 4],
+            ['886313e1-3b8a-5372-9b90-0c9aee199e5d', 5],
+            ['1e1c57df-f6f8-6cb0-9b21-0800200c9a66', 6],
+            ['018f3c92-8f3c-7b3c-8f3c-8f3c8f3c8f3c', 7],
+            ['886313e1-3b8a-8372-9b90-0c9aee199e5d', 8],
+            ['00000000-0000-0000-0000-000000000000', null],
+            ['ffffffff-ffff-ffff-ffff-ffffffffffff', null],
+            ['invalid-uuid-string', null],
+            ['short', null],
+            ['', null],
+            ['FF6F8CB0-C57D-11E1-9B21-0800200C9A66', 1],
+        ];
+    }
+
+    /**
+     * @param int|null $expectedVariant
+     *
+     * @dataProvider provideGetVariantCases
+     */
+    public function testGetVariant(string $uuid, ?int $expectedVariant): void
+    {
+        $this->assertSame($expectedVariant, Uuid::getVariant($uuid));
+    }
+
+    /**
+     * @return array<array{0: string, 1: int|null}>
+     */
+    public function provideGetVariantCases(): array
+    {
+        return [
+            ['ff6f8cb0-c57d-11e1-0b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-1b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-2b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-3b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-4b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-5b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-6b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-7b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-8b21-0800200c9a66', Uuid::RFC_4122],
+            ['ff6f8cb0-c57d-11e1-9b21-0800200c9a66', Uuid::RFC_4122],
+            ['ff6f8cb0-c57d-11e1-ab21-0800200c9a66', Uuid::RFC_4122],
+            ['ff6f8cb0-c57d-11e1-bb21-0800200c9a66', Uuid::RFC_4122],
+            ['ff6f8cb0-c57d-11e1-cb21-0800200c9a66', Uuid::RESERVED_MICROSOFT],
+            ['ff6f8cb0-c57d-11e1-db21-0800200c9a66', Uuid::RESERVED_MICROSOFT],
+            ['ff6f8cb0-c57d-11e1-eb21-0800200c9a66', Uuid::RESERVED_FUTURE],
+            ['ff6f8cb0-c57d-11e1-fb21-0800200c9a66', Uuid::RESERVED_FUTURE],
+            ['00000000-0000-0000-0000-000000000000', Uuid::RESERVED_NCS],
+            ['invalid-uuid-string', null],
+            ['short', null],
+            ['', null],
+            ['FF6F8CB0-C57D-11E1-8B21-0800200C9A66', Uuid::RFC_4122],
+        ];
+    }
 }
