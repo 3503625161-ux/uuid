@@ -22,6 +22,7 @@ use Ramsey\Uuid\Rfc4122\UuidV1;
 use Ramsey\Uuid\Rfc4122\UuidV6;
 use Ramsey\Uuid\Type\Hexadecimal;
 use Ramsey\Uuid\Type\Integer as IntegerObject;
+use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidFactory;
 use Ramsey\Uuid\UuidInterface;
 use ValueError;
@@ -421,6 +422,6 @@ final class LazyUuidFromString implements UuidInterface
 
     private function unwrap(): UuidInterface
     {
-        return $this->unwrapped = (new UuidFactory())->fromString($this->uuid);
+        return $this->unwrapped = Uuid::getFactory()->fromString($this->uuid);
     }
 }
