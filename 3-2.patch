@@ -1,0 +1,549 @@
+diff --git a/src/FeatureSet.php b/src/FeatureSet.php
+index 88ce7c4..ee8fd72 100644
+--- a/src/FeatureSet.php
++++ b/src/FeatureSet.php
+@@ -14,95 +14,39 @@ declare(strict_types=1);
+ 
+ namespace Ramsey\Uuid;
+ 
+-use Ramsey\Uuid\Builder\FallbackBuilder;
+ use Ramsey\Uuid\Builder\UuidBuilderInterface;
+ use Ramsey\Uuid\Codec\CodecInterface;
+-use Ramsey\Uuid\Codec\GuidStringCodec;
+-use Ramsey\Uuid\Codec\StringCodec;
+-use Ramsey\Uuid\Converter\Number\GenericNumberConverter;
+ use Ramsey\Uuid\Converter\NumberConverterInterface;
+-use Ramsey\Uuid\Converter\Time\GenericTimeConverter;
+-use Ramsey\Uuid\Converter\Time\PhpTimeConverter;
+ use Ramsey\Uuid\Converter\TimeConverterInterface;
+-use Ramsey\Uuid\Generator\DceSecurityGenerator;
+ use Ramsey\Uuid\Generator\DceSecurityGeneratorInterface;
+-use Ramsey\Uuid\Generator\NameGeneratorFactory;
+ use Ramsey\Uuid\Generator\NameGeneratorInterface;
+-use Ramsey\Uuid\Generator\PeclUuidNameGenerator;
+-use Ramsey\Uuid\Generator\PeclUuidRandomGenerator;
+-use Ramsey\Uuid\Generator\PeclUuidTimeGenerator;
+-use Ramsey\Uuid\Generator\RandomGeneratorFactory;
+ use Ramsey\Uuid\Generator\RandomGeneratorInterface;
+-use Ramsey\Uuid\Generator\TimeGeneratorFactory;
+ use Ramsey\Uuid\Generator\TimeGeneratorInterface;
+-use Ramsey\Uuid\Generator\UnixTimeGenerator;
+-use Ramsey\Uuid\Guid\GuidBuilder;
+-use Ramsey\Uuid\Math\BrickMathCalculator;
+ use Ramsey\Uuid\Math\CalculatorInterface;
+-use Ramsey\Uuid\Nonstandard\UuidBuilder as NonstandardUuidBuilder;
+-use Ramsey\Uuid\Provider\Dce\SystemDceSecurityProvider;
+-use Ramsey\Uuid\Provider\DceSecurityProviderInterface;
+-use Ramsey\Uuid\Provider\Node\FallbackNodeProvider;
+-use Ramsey\Uuid\Provider\Node\RandomNodeProvider;
+-use Ramsey\Uuid\Provider\Node\SystemNodeProvider;
+ use Ramsey\Uuid\Provider\NodeProviderInterface;
+-use Ramsey\Uuid\Provider\Time\SystemTimeProvider;
+-use Ramsey\Uuid\Provider\TimeProviderInterface;
+-use Ramsey\Uuid\Rfc4122\UuidBuilder as Rfc4122UuidBuilder;
+-use Ramsey\Uuid\Validator\GenericValidator;
+ use Ramsey\Uuid\Validator\ValidatorInterface;
+ 
+-use const PHP_INT_SIZE;
+-
+ /**
+- * FeatureSet detects and exposes available features in the current environment
++ * FeatureSet acts as a pure value object container holding component instances.
+  *
+- * A feature set is used by UuidFactory to determine the available features and capabilities of the environment.
++ * It is used by UuidFactory to retrieve the available features and capabilities of the environment.
+  */
+ class FeatureSet
+ {
+-    private ?TimeProviderInterface $timeProvider = null;
+-    private CalculatorInterface $calculator;
+-    private CodecInterface $codec;
+-    private DceSecurityGeneratorInterface $dceSecurityGenerator;
+-    private NameGeneratorInterface $nameGenerator;
+-    private NodeProviderInterface $nodeProvider;
+-    private NumberConverterInterface $numberConverter;
+-    private RandomGeneratorInterface $randomGenerator;
+-    private TimeConverterInterface $timeConverter;
+-    private TimeGeneratorInterface $timeGenerator;
+-    private TimeGeneratorInterface $unixTimeGenerator;
+-    private UuidBuilderInterface $builder;
+-    private ValidatorInterface $validator;
+-
+-    /**
+-     * @param bool $useGuids True build UUIDs using the GuidStringCodec
+-     * @param bool $force32Bit True to force the use of 32-bit functionality (primarily for testing purposes)
+-     * @param bool $forceNoBigNumber (obsolete)
+-     * @param bool $ignoreSystemNode True to disable attempts to check for the system node ID (primarily for testing purposes)
+-     * @param bool $enablePecl True to enable the use of the PeclUuidTimeGenerator to generate version 1 UUIDs
+-     *
+-     * @phpstan-ignore constructor.unusedParameter ($forceNoBigNumber is deprecated)
+-     */
+     public function __construct(
+-        bool $useGuids = false,
+-        private bool $force32Bit = false,
+-        bool $forceNoBigNumber = false,
+-        private bool $ignoreSystemNode = false,
+-        private bool $enablePecl = false,
++        private CalculatorInterface $calculator,
++        private CodecInterface $codec,
++        private DceSecurityGeneratorInterface $dceSecurityGenerator,
++        private NameGeneratorInterface $nameGenerator,
++        private NodeProviderInterface $nodeProvider,
++        private NumberConverterInterface $numberConverter,
++        private RandomGeneratorInterface $randomGenerator,
++        private TimeConverterInterface $timeConverter,
++        private TimeGeneratorInterface $timeGenerator,
++        private TimeGeneratorInterface $unixTimeGenerator,
++        private UuidBuilderInterface $builder,
++        private ValidatorInterface $validator
+     ) {
+-        $this->randomGenerator = $this->buildRandomGenerator();
+-        $this->setCalculator(new BrickMathCalculator());
+-        $this->builder = $this->buildUuidBuilder($useGuids);
+-        $this->codec = $this->buildCodec($useGuids);
+-        $this->nodeProvider = $this->buildNodeProvider();
+-        $this->nameGenerator = $this->buildNameGenerator();
+-        $this->setTimeProvider(new SystemTimeProvider());
+-        $this->setDceSecurityProvider(new SystemDceSecurityProvider());
+-        $this->validator = new GenericValidator();
+-
+-        assert($this->timeProvider !== null);
+-        $this->unixTimeGenerator = $this->buildUnixTimeGenerator();
+     }
+ 
+     /**
+@@ -200,184 +144,4 @@ class FeatureSet
+     {
+         return $this->validator;
+     }
+-
+-    /**
+-     * Sets the calculator to use in this environment
+-     */
+-    public function setCalculator(CalculatorInterface $calculator): void
+-    {
+-        $this->calculator = $calculator;
+-        $this->numberConverter = $this->buildNumberConverter($calculator);
+-        $this->timeConverter = $this->buildTimeConverter($calculator);
+-
+-        if (isset($this->timeProvider)) {
+-            $this->timeGenerator = $this->buildTimeGenerator($this->timeProvider);
+-        }
+-    }
+-
+-    /**
+-     * Sets the DCE Security provider to use in this environment
+-     */
+-    public function setDceSecurityProvider(DceSecurityProviderInterface $dceSecurityProvider): void
+-    {
+-        $this->dceSecurityGenerator = $this->buildDceSecurityGenerator($dceSecurityProvider);
+-    }
+-
+-    /**
+-     * Sets the node provider to use in this environment
+-     */
+-    public function setNodeProvider(NodeProviderInterface $nodeProvider): void
+-    {
+-        $this->nodeProvider = $nodeProvider;
+-
+-        if (isset($this->timeProvider)) {
+-            $this->timeGenerator = $this->buildTimeGenerator($this->timeProvider);
+-        }
+-    }
+-
+-    /**
+-     * Sets the time provider to use in this environment
+-     */
+-    public function setTimeProvider(TimeProviderInterface $timeProvider): void
+-    {
+-        $this->timeProvider = $timeProvider;
+-        $this->timeGenerator = $this->buildTimeGenerator($timeProvider);
+-    }
+-
+-    /**
+-     * Set the validator to use in this environment
+-     */
+-    public function setValidator(ValidatorInterface $validator): void
+-    {
+-        $this->validator = $validator;
+-    }
+-
+-    /**
+-     * Returns a codec configured for this environment
+-     *
+-     * @param bool $useGuids Whether to build UUIDs using the GuidStringCodec
+-     */
+-    private function buildCodec(bool $useGuids = false): CodecInterface
+-    {
+-        if ($useGuids) {
+-            return new GuidStringCodec($this->builder);
+-        }
+-
+-        return new StringCodec($this->builder);
+-    }
+-
+-    /**
+-     * Returns a DCE Security generator configured for this environment
+-     */
+-    private function buildDceSecurityGenerator(
+-        DceSecurityProviderInterface $dceSecurityProvider,
+-    ): DceSecurityGeneratorInterface {
+-        return new DceSecurityGenerator($this->numberConverter, $this->timeGenerator, $dceSecurityProvider);
+-    }
+-
+-    /**
+-     * Returns a node provider configured for this environment
+-     */
+-    private function buildNodeProvider(): NodeProviderInterface
+-    {
+-        if ($this->ignoreSystemNode) {
+-            return new RandomNodeProvider();
+-        }
+-
+-        return new FallbackNodeProvider([new SystemNodeProvider(), new RandomNodeProvider()]);
+-    }
+-
+-    /**
+-     * Returns a number converter configured for this environment
+-     */
+-    private function buildNumberConverter(CalculatorInterface $calculator): NumberConverterInterface
+-    {
+-        return new GenericNumberConverter($calculator);
+-    }
+-
+-    /**
+-     * Returns a random generator configured for this environment
+-     */
+-    private function buildRandomGenerator(): RandomGeneratorInterface
+-    {
+-        if ($this->enablePecl) {
+-            return new PeclUuidRandomGenerator();
+-        }
+-
+-        return (new RandomGeneratorFactory())->getGenerator();
+-    }
+-
+-    /**
+-     * Returns a time generator configured for this environment
+-     *
+-     * @param TimeProviderInterface $timeProvider The time provider to use with
+-     *     the time generator
+-     */
+-    private function buildTimeGenerator(TimeProviderInterface $timeProvider): TimeGeneratorInterface
+-    {
+-        if ($this->enablePecl) {
+-            return new PeclUuidTimeGenerator();
+-        }
+-
+-        return (new TimeGeneratorFactory($this->nodeProvider, $this->timeConverter, $timeProvider))->getGenerator();
+-    }
+-
+-    /**
+-     * Returns a Unix Epoch time generator configured for this environment
+-     */
+-    private function buildUnixTimeGenerator(): TimeGeneratorInterface
+-    {
+-        return new UnixTimeGenerator($this->randomGenerator);
+-    }
+-
+-    /**
+-     * Returns a name generator configured for this environment
+-     */
+-    private function buildNameGenerator(): NameGeneratorInterface
+-    {
+-        if ($this->enablePecl) {
+-            return new PeclUuidNameGenerator();
+-        }
+-
+-        return (new NameGeneratorFactory())->getGenerator();
+-    }
+-
+-    /**
+-     * Returns a time converter configured for this environment
+-     */
+-    private function buildTimeConverter(CalculatorInterface $calculator): TimeConverterInterface
+-    {
+-        $genericConverter = new GenericTimeConverter($calculator);
+-
+-        if ($this->is64BitSystem()) {
+-            return new PhpTimeConverter($calculator, $genericConverter);
+-        }
+-
+-        return $genericConverter;
+-    }
+-
+-    /**
+-     * Returns a UUID builder configured for this environment
+-     *
+-     * @param bool $useGuids Whether to build UUIDs using the GuidStringCodec
+-     */
+-    private function buildUuidBuilder(bool $useGuids = false): UuidBuilderInterface
+-    {
+-        if ($useGuids) {
+-            return new GuidBuilder($this->numberConverter, $this->timeConverter);
+-        }
+-
+-        return new FallbackBuilder([
+-            new Rfc4122UuidBuilder($this->numberConverter, $this->timeConverter),
+-            new NonstandardUuidBuilder($this->numberConverter, $this->timeConverter),
+-        ]);
+-    }
+-
+-    /**
+-     * Returns true if the PHP build is 64-bit
+-     */
+-    private function is64BitSystem(): bool
+-    {
+-        return PHP_INT_SIZE === 8 && !$this->force32Bit;
+-    }
+ }
+diff --git a/src/UuidFactory.php b/src/UuidFactory.php
+index c7607a1..4d66f30 100644
+--- a/src/UuidFactory.php
++++ b/src/UuidFactory.php
+@@ -70,7 +70,7 @@ class UuidFactory implements UuidFactoryInterface
+     {
+         $this->isDefaultFeatureSet = $features === null;
+ 
+-        $features = $features ?: new FeatureSet();
++        $features = $features ?: \Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults()->build();
+ 
+         $this->codec = $features->getCodec();
+         $this->dceSecurityGenerator = $features->getDceSecurityGenerator();
+diff --git a/tests/FeatureSetTest.php b/tests/FeatureSetTest.php
+index 7b26461..f7e663f 100644
+--- a/tests/FeatureSetTest.php
++++ b/tests/FeatureSetTest.php
+@@ -6,6 +6,7 @@ namespace Ramsey\Uuid\Test;
+ 
+ use Mockery;
+ use Ramsey\Uuid\Builder\FallbackBuilder;
++use Ramsey\Uuid\Builder\FeatureSetBuilder;
+ use Ramsey\Uuid\Converter\TimeConverterInterface;
+ use Ramsey\Uuid\FeatureSet;
+ use Ramsey\Uuid\Generator\DefaultNameGenerator;
+@@ -20,31 +21,30 @@ class FeatureSetTest extends TestCase
+ {
+     public function testGuidBuilderIsSelected(): void
+     {
+-        $featureSet = new FeatureSet(true, true);
++        $featureSet = FeatureSetBuilder::fromDefaults(true, true)->build();
+ 
+         $this->assertInstanceOf(GuidBuilder::class, $featureSet->getBuilder());
+     }
+ 
+     public function testFallbackBuilderIsSelected(): void
+     {
+-        $featureSet = new FeatureSet(false, true);
++        $featureSet = FeatureSetBuilder::fromDefaults(false, true)->build();
+ 
+         $this->assertInstanceOf(FallbackBuilder::class, $featureSet->getBuilder());
+     }
+ 
+-    public function testSetValidatorSetsTheProvidedValidator(): void
++    public function testBuilderWithValidatorSetsTheProvidedValidator(): void
+     {
+         $validator = Mockery::mock(ValidatorInterface::class);
+ 
+-        $featureSet = new FeatureSet();
+-        $featureSet->setValidator($validator);
++        $featureSet = FeatureSetBuilder::fromDefaults()->withValidator($validator)->build();
+ 
+         $this->assertSame($validator, $featureSet->getValidator());
+     }
+ 
+     public function testGetTimeConverter(): void
+     {
+-        $featureSet = new FeatureSet();
++        $featureSet = FeatureSetBuilder::fromDefaults()->build();
+ 
+         /** @phpstan-ignore method.alreadyNarrowedType */
+         $this->assertInstanceOf(TimeConverterInterface::class, $featureSet->getTimeConverter());
+@@ -52,37 +52,36 @@ class FeatureSetTest extends TestCase
+ 
+     public function testDefaultNameGeneratorIsSelected(): void
+     {
+-        $featureSet = new FeatureSet();
++        $featureSet = FeatureSetBuilder::fromDefaults()->build();
+ 
+         $this->assertInstanceOf(DefaultNameGenerator::class, $featureSet->getNameGenerator());
+     }
+ 
+     public function testPeclUuidTimeGeneratorIsSelected(): void
+     {
+-        $featureSet = new FeatureSet(false, false, false, false, true);
++        $featureSet = FeatureSetBuilder::fromDefaults(false, false, false, false, true)->build();
+ 
+         $this->assertInstanceOf(PeclUuidTimeGenerator::class, $featureSet->getTimeGenerator());
+     }
+ 
+     public function testGetCalculator(): void
+     {
+-        $featureSet = new FeatureSet();
++        $featureSet = FeatureSetBuilder::fromDefaults()->build();
+ 
+         $this->assertInstanceOf(BrickMathCalculator::class, $featureSet->getCalculator());
+     }
+ 
+-    public function testSetNodeProvider(): void
++    public function testBuilderWithNodeProvider(): void
+     {
+         $nodeProvider = Mockery::mock(NodeProviderInterface::class);
+-        $featureSet = new FeatureSet();
+-        $featureSet->setNodeProvider($nodeProvider);
++        $featureSet = FeatureSetBuilder::fromDefaults()->withNodeProvider($nodeProvider)->build();
+ 
+         $this->assertSame($nodeProvider, $featureSet->getNodeProvider());
+     }
+ 
+     public function testGetUnixTimeGenerator(): void
+     {
+-        $featureSet = new FeatureSet();
++        $featureSet = FeatureSetBuilder::fromDefaults()->build();
+ 
+         $this->assertInstanceOf(UnixTimeGenerator::class, $featureSet->getUnixTimeGenerator());
+     }
+diff --git a/tests/Generator/DefaultTimeGeneratorTest.php b/tests/Generator/DefaultTimeGeneratorTest.php
+index f12a93d..384892d 100644
+--- a/tests/Generator/DefaultTimeGeneratorTest.php
++++ b/tests/Generator/DefaultTimeGeneratorTest.php
+@@ -199,7 +199,7 @@ class DefaultTimeGeneratorTest extends TestCase
+     public function testDefaultTimeGeneratorThrowsExceptionForLargeGeneratedValue(): void
+     {
+         $timeProvider = new FixedTimeProvider(new Time('1832455114570', '955162'));
+-        $featureSet = new FeatureSet();
++        $featureSet = \Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults()->build();
+         $timeGenerator = new DefaultTimeGenerator(
+             $featureSet->getNodeProvider(),
+             $featureSet->getTimeConverter(),
+diff --git a/tests/UuidFactoryTest.php b/tests/UuidFactoryTest.php
+index c9ee5f1..79cdb3a 100644
+--- a/tests/UuidFactoryTest.php
++++ b/tests/UuidFactoryTest.php
+@@ -41,7 +41,7 @@ class UuidFactoryTest extends TestCase
+ 
+     public function testParsesGuidCorrectly(): void
+     {
+-        $factory = new UuidFactory(new FeatureSet(true));
++        $factory = new UuidFactory(\Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults(true)->build());
+ 
+         $uuid = $factory->fromString('ff6f8cb0-c57d-11e1-9b21-0800200c9a66');
+ 
+@@ -53,7 +53,7 @@ class UuidFactoryTest extends TestCase
+     {
+         $uuidString = 'ff6f8cb0-c57d-11e1-9b21-0800200c9a66';
+         $uuidUpper = strtoupper($uuidString);
+-        $factory = new UuidFactory(new FeatureSet(true));
++        $factory = new UuidFactory(\Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults(true)->build());
+ 
+         $uuid = $factory->fromString($uuidUpper);
+ 
+diff --git a/tests/UuidTest.php b/tests/UuidTest.php
+index 494f417..18f4792 100644
+--- a/tests/UuidTest.php
++++ b/tests/UuidTest.php
+@@ -115,7 +115,7 @@ class UuidTest extends TestCase
+     {
+         $uuid = Uuid::fromString('ff6f8cb0-c57d-11e1-9b21-0800200c9a66');
+ 
+-        Uuid::setFactory(new UuidFactory(new FeatureSet(true)));
++        Uuid::setFactory(new UuidFactory(\Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults(true)->build()));
+ 
+         $guid = Guid::fromString('ff6f8cb0-c57d-11e1-9b21-0800200c9a66');
+ 
+@@ -673,7 +673,7 @@ class UuidTest extends TestCase
+ 
+     public function testUuid1WithRandomNode(): void
+     {
+-        Uuid::setFactory(new UuidFactory(new FeatureSet(false, false, false, true)));
++        Uuid::setFactory(new UuidFactory(\Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults(false, false, false, true)->build()));
+ 
+         $uuid = Uuid::uuid1();
+         $this->assertSame(2, $uuid->getVariant());
+@@ -740,7 +740,7 @@ class UuidTest extends TestCase
+ 
+     public function testUuid6WithRandomNode(): void
+     {
+-        Uuid::setFactory(new UuidFactory(new FeatureSet(false, false, false, true)));
++        Uuid::setFactory(new UuidFactory(\Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults(false, false, false, true)->build()));
+ 
+         $uuid = Uuid::uuid6();
+         $this->assertSame(2, $uuid->getVariant());
+@@ -1118,8 +1118,7 @@ class UuidTest extends TestCase
+     {
+         $timeOfDay = new FixedTimeProvider(new Time(1348845514, 277885));
+ 
+-        $featureSet = new FeatureSet();
+-        $featureSet->setTimeProvider($timeOfDay);
++        $featureSet = \Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults()->withTimeProvider($timeOfDay)->build();
+ 
+         // For usec = 277885
+         Uuid::setFactory(new UuidFactory($featureSet));
+@@ -1154,8 +1153,7 @@ class UuidTest extends TestCase
+         // 5235-03-31T21:20:59+00:00
+         $timeOfDay = new FixedTimeProvider(new Time('103072857659', '999999'));
+ 
+-        $featureSet = new FeatureSet();
+-        $featureSet->setTimeProvider($timeOfDay);
++        $featureSet = \Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults()->withTimeProvider($timeOfDay)->build();
+ 
+         Uuid::setFactory(new UuidFactory($featureSet));
+         $uuidA = Uuid::uuid1(0x00007ffffffe, 0x1669);
+@@ -1168,7 +1166,7 @@ class UuidTest extends TestCase
+         // 1582-10-15T00:00:00+00:00
+         $timeOfDay = new FixedTimeProvider(new Time('-12219292800', '0'));
+ 
+-        $featureSet->setTimeProvider($timeOfDay);
++        $featureSet = \Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults()->withTimeProvider($timeOfDay)->build();
+ 
+         Uuid::setFactory(new UuidFactory($featureSet));
+         $uuidB = Uuid::uuid1(0x00007ffffffe, 0x1669);
+@@ -1190,13 +1188,11 @@ class UuidTest extends TestCase
+ 
+         $timeOfDay = new FixedTimeProvider(new Time($currentTime, 0));
+ 
+-        $smallIntFeatureSet = new FeatureSet(false, true);
+-        $smallIntFeatureSet->setTimeProvider($timeOfDay);
++        $smallIntFeatureSet = \Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults(false, true)->withTimeProvider($timeOfDay)->build();
+ 
+         $smallIntFactory = new UuidFactory($smallIntFeatureSet);
+ 
+-        $featureSet = new FeatureSet();
+-        $featureSet->setTimeProvider($timeOfDay);
++        $featureSet = \Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults()->withTimeProvider($timeOfDay)->build();
+ 
+         $factory = new UuidFactory($featureSet);
+ 
+@@ -1274,8 +1270,8 @@ class UuidTest extends TestCase
+ 
+     public function testGuidBytesMatchesUuidWithSameString(): void
+     {
+-        $uuidFactory = new UuidFactory(new FeatureSet(false));
+-        $guidFactory = new UuidFactory(new FeatureSet(true));
++        $uuidFactory = new UuidFactory(\Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults(false)->build());
++        $guidFactory = new UuidFactory(\Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults(true)->build());
+ 
+         $uuid = $uuidFactory->fromString('ff6f8cb0-c57d-11e1-9b21-0800200c9a66');
+         $bytes = $uuid->getBytes();
+@@ -1294,7 +1290,7 @@ class UuidTest extends TestCase
+ 
+     public function testGuidBytesProducesSameGuidString(): void
+     {
+-        $guidFactory = new UuidFactory(new FeatureSet(true));
++        $guidFactory = new UuidFactory(\Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults(true)->build());
+ 
+         $guid = $guidFactory->fromString('ff6f8cb0-c57d-11e1-9b21-0800200c9a66');
+         $bytes = $guid->getBytes();
+diff --git a/tests/benchmark/GuidConversionBench.php b/tests/benchmark/GuidConversionBench.php
+index a11842a..2ba9ec4 100644
+--- a/tests/benchmark/GuidConversionBench.php
++++ b/tests/benchmark/GuidConversionBench.php
+@@ -29,7 +29,7 @@ final class GuidConversionBench
+ 
+     public function __construct()
+     {
+-        $factory = new UuidFactory(new FeatureSet(useGuids: true));
++        $factory = new UuidFactory(\Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults(useGuids: true)->build());
+ 
+         $this->uuid = $factory->fromBytes(self::UUID_BYTES[0]);
+ 

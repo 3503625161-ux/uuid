@@ -29,7 +29,7 @@ final class GuidConversionBench
 
     public function __construct()
     {
-        $factory = new UuidFactory(new FeatureSet(useGuids: true));
+        $factory = new UuidFactory(\Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults(useGuids: true)->build());
 
         $this->uuid = $factory->fromBytes(self::UUID_BYTES[0]);
 

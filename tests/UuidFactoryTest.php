@@ -41,7 +41,7 @@ class UuidFactoryTest extends TestCase
 
     public function testParsesGuidCorrectly(): void
     {
-        $factory = new UuidFactory(new FeatureSet(true));
+        $factory = new UuidFactory(\Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults(true)->build());
 
         $uuid = $factory->fromString('ff6f8cb0-c57d-11e1-9b21-0800200c9a66');
 
@@ -53,7 +53,7 @@ class UuidFactoryTest extends TestCase
     {
         $uuidString = 'ff6f8cb0-c57d-11e1-9b21-0800200c9a66';
         $uuidUpper = strtoupper($uuidString);
-        $factory = new UuidFactory(new FeatureSet(true));
+        $factory = new UuidFactory(\Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults(true)->build());
 
         $uuid = $factory->fromString($uuidUpper);
 

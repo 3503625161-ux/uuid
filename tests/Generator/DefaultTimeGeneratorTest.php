@@ -199,7 +199,7 @@ class DefaultTimeGeneratorTest extends TestCase
     public function testDefaultTimeGeneratorThrowsExceptionForLargeGeneratedValue(): void
     {
         $timeProvider = new FixedTimeProvider(new Time('1832455114570', '955162'));
-        $featureSet = new FeatureSet();
+        $featureSet = \Ramsey\Uuid\Builder\FeatureSetBuilder::fromDefaults()->build();
         $timeGenerator = new DefaultTimeGenerator(
             $featureSet->getNodeProvider(),
             $featureSet->getTimeConverter(),
