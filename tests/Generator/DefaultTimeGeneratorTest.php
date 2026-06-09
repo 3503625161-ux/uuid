@@ -23,6 +23,7 @@ use Ramsey\Uuid\Type\Time;
 use phpmock\mockery\PHPMockery;
 
 use function hex2bin;
+use function str_repeat;
 
 class DefaultTimeGeneratorTest extends TestCase
 {
@@ -158,10 +159,12 @@ class DefaultTimeGeneratorTest extends TestCase
      */
     public function testGenerateUsesRandomSequenceWhenClockSeqNull(): void
     {
-        PHPMockery::mock('Ramsey\Uuid\Generator', 'random_int')
+        $expectedBytes = hex2bin('83cb98e098e003cb0001122f80ca9e06');
+
+        PHPMockery::mock('Ramsey\Uuid\Generator', 'random_bytes')
             ->once()
-            ->with(0, 0x3fff)
-            ->andReturn(9622);
+            ->with(65)
+            ->andReturn(str_repeat("\x00", 65));
         $this->timeConverter->expects($this->once())
             ->method('calculateTime')
             ->with($this->currentTime['sec'], $this->currentTime['usec'])
@@ -171,17 +174,19 @@ class DefaultTimeGeneratorTest extends TestCase
             $this->timeConverter,
             $this->timeProvider
         );
-        $defaultTimeGenerator->generate($this->nodeId);
+
+        $this->assertSame($expectedBytes, $defaultTimeGenerator->generate($this->nodeId));
     }
 
     /**
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
-    public function testGenerateThrowsExceptionWhenExceptionThrownByRandomint(): void
+    public function testGenerateThrowsExceptionWhenExceptionThrownByRandomBytes(): void
     {
-        PHPMockery::mock('Ramsey\Uuid\Generator', 'random_int')
+        PHPMockery::mock('Ramsey\Uuid\Generator', 'random_bytes')
             ->once()
+            ->with(65)
             ->andThrow(new Exception('Could not gather sufficient random data'));
 
         $defaultTimeGenerator = new DefaultTimeGenerator(
