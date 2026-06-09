@@ -1,0 +1,89 @@
+diff --git a/src/Lazy/LazyUuidFromString.php b/src/Lazy/LazyUuidFromString.php
+index 8d3129c..d1725a3 100644
+--- a/src/Lazy/LazyUuidFromString.php
++++ b/src/Lazy/LazyUuidFromString.php
+@@ -188,6 +188,11 @@ final class LazyUuidFromString implements UuidInterface
+         return ($this->unwrapped ?? $this->unwrap())->getUrn();
+     }
+ 
++    public function getUnixTimestamp(): ?int
++    {
++        return ($this->unwrapped ?? $this->unwrap())->getUnixTimestamp();
++    }
++
+     public function getVariant(): ?int
+     {
+         return ($this->unwrapped ?? $this->unwrap())->getVariant();
+diff --git a/src/Uuid.php b/src/Uuid.php
+index 0f05bbf..2b61c81 100644
+--- a/src/Uuid.php
++++ b/src/Uuid.php
+@@ -390,6 +390,15 @@ class Uuid implements UuidInterface
+         return $this->fields;
+     }
+ 
++    public function getUnixTimestamp(): ?int
++    {
++        if ($this->fields->getVersion() !== 7) {
++            return null;
++        }
++
++        return (int) hexdec(substr($this->fields->getTimestamp()->toString(), -12));
++    }
++
+     public function getHex(): Hexadecimal
+     {
+         return new Hexadecimal(str_replace('-', '', $this->toString()));
+diff --git a/src/UuidInterface.php b/src/UuidInterface.php
+index 38525cb..716017c 100644
+--- a/src/UuidInterface.php
++++ b/src/UuidInterface.php
+@@ -80,6 +80,18 @@ interface UuidInterface extends
+      */
+     public function getInteger(): IntegerObject;
+ 
++    /**
++     * Returns the Unix timestamp extracted from a version 7 UUID
++     *
++     * The returned value is a 48-bit number representing the number of
++     * milliseconds elapsed since the Unix epoch, encoded in the first 6 bytes
++     * of the UUID.
++     *
++     * @return int | null The millisecond-precision Unix timestamp, or null if
++     *     this UUID is not a version 7 UUID
++     */
++    public function getUnixTimestamp(): ?int;
++
+     /**
+      * Returns the string standard representation of the UUID as a URN
+      *
+diff --git a/tests/UuidTest.php b/tests/UuidTest.php
+index 494f417..28b998f 100644
+--- a/tests/UuidTest.php
++++ b/tests/UuidTest.php
+@@ -1933,4 +1933,25 @@ class UuidTest extends TestCase
+             ['uuid5', [Uuid::NIL, 'foobar']],
+         ];
+     }
++
++    public function testGetUnixTimestampForUuidV7(): void
++    {
++        $uuid = Uuid::uuid7();
++        $timestamp = $uuid->getUnixTimestamp();
++
++        $this->assertIsInt($timestamp);
++        $this->assertGreaterThan(0, $timestamp);
++    }
++
++    public function testGetUnixTimestampForNonV7Uuids(): void
++    {
++        $uuidV1 = Uuid::uuid1();
++        $this->assertNull($uuidV1->getUnixTimestamp());
++
++        $uuidV4 = Uuid::uuid4();
++        $this->assertNull($uuidV4->getUnixTimestamp());
++
++        $uuidV6 = Uuid::uuid6();
++        $this->assertNull($uuidV6->getUnixTimestamp());
++    }
+ }

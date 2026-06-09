@@ -81,6 +81,18 @@ interface UuidInterface extends
     public function getInteger(): IntegerObject;
 
     /**
+     * Returns the Unix timestamp extracted from a version 7 UUID
+     *
+     * The returned value is a 48-bit number representing the number of
+     * milliseconds elapsed since the Unix epoch, encoded in the first 6 bytes
+     * of the UUID.
+     *
+     * @return int | null The millisecond-precision Unix timestamp, or null if
+     *     this UUID is not a version 7 UUID
+     */
+    public function getUnixTimestamp(): ?int;
+
+    /**
      * Returns the string standard representation of the UUID as a URN
      *
      * @link http://en.wikipedia.org/wiki/Uniform_Resource_Name Uniform Resource Name

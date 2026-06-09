@@ -1933,4 +1933,25 @@ class UuidTest extends TestCase
             ['uuid5', [Uuid::NIL, 'foobar']],
         ];
     }
+
+    public function testGetUnixTimestampForUuidV7(): void
+    {
+        $uuid = Uuid::uuid7();
+        $timestamp = $uuid->getUnixTimestamp();
+
+        $this->assertIsInt($timestamp);
+        $this->assertGreaterThan(0, $timestamp);
+    }
+
+    public function testGetUnixTimestampForNonV7Uuids(): void
+    {
+        $uuidV1 = Uuid::uuid1();
+        $this->assertNull($uuidV1->getUnixTimestamp());
+
+        $uuidV4 = Uuid::uuid4();
+        $this->assertNull($uuidV4->getUnixTimestamp());
+
+        $uuidV6 = Uuid::uuid6();
+        $this->assertNull($uuidV6->getUnixTimestamp());
+    }
 }

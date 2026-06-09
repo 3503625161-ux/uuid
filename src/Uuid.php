@@ -390,6 +390,15 @@ class Uuid implements UuidInterface
         return $this->fields;
     }
 
+    public function getUnixTimestamp(): ?int
+    {
+        if ($this->fields->getVersion() !== 7) {
+            return null;
+        }
+
+        return (int) hexdec(substr($this->fields->getTimestamp()->toString(), -12));
+    }
+
     public function getHex(): Hexadecimal
     {
         return new Hexadecimal(str_replace('-', '', $this->toString()));
