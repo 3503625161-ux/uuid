@@ -1,0 +1,123 @@
+diff --git a/src/Generator/DefaultTimeGenerator.php b/src/Generator/DefaultTimeGenerator.php
+index 6ded59d..ed60aa3 100644
+--- a/src/Generator/DefaultTimeGenerator.php
++++ b/src/Generator/DefaultTimeGenerator.php
+@@ -23,14 +23,16 @@ use Ramsey\Uuid\Provider\TimeProviderInterface;
+ use Ramsey\Uuid\Type\Hexadecimal;
+ use Throwable;
+ 
++use function ctype_xdigit;
+ use function dechex;
+-use function hex2bin;
++use function hash;
+ use function is_int;
+ use function pack;
+-use function preg_match;
++use function random_bytes;
+ use function sprintf;
+ use function str_pad;
+ use function strlen;
++use function unpack;
+ 
+ use const STR_PAD_LEFT;
+ 
+@@ -39,6 +41,13 @@ use const STR_PAD_LEFT;
+  */
+ class DefaultTimeGenerator implements TimeGeneratorInterface
+ {
++    private static ?string $seed = null;
++    private static int $seedIndex = 0;
++
++    /** @var int[] */
++    private static array $seedParts = [];
++    private static int $clockSeq = 0;
++
+     public function __construct(
+         private NodeProviderInterface $nodeProvider,
+         private TimeConverterInterface $timeConverter,
+@@ -61,12 +70,7 @@ class DefaultTimeGenerator implements TimeGeneratorInterface
+         $node = $this->getValidNode($node);
+ 
+         if ($clockSeq === null) {
+-            try {
+-                // This does not use "stable storage"; see RFC 9562, section 6.3.
+-                $clockSeq = random_int(0, 0x3fff);
+-            } catch (Throwable $exception) {
+-                throw new RandomSourceException($exception->getMessage(), (int) $exception->getCode(), $exception);
+-            }
++            $clockSeq = $this->nextClockSeq();
+         }
+ 
+         $time = $this->timeProvider->getTime();
+@@ -82,11 +86,47 @@ class DefaultTimeGenerator implements TimeGeneratorInterface
+             throw new TimeSourceException(sprintf('The generated time of \'%s\' is larger than expected', $timeHex));
+         }
+ 
+-        $timeBytes = (string) hex2bin($timeHex);
++        $timeBytes = pack('H*', $timeHex);
++
++        /** @var int[] $parts */
++        $parts = unpack('n4', $timeBytes);
+ 
+-        return $timeBytes[4] . $timeBytes[5] . $timeBytes[6] . $timeBytes[7]
+-            . $timeBytes[2] . $timeBytes[3] . $timeBytes[0] . $timeBytes[1]
+-            . pack('n*', $clockSeq) . $node;
++        return pack('n4n', $parts[3], $parts[4], $parts[2], $parts[1], $clockSeq) . $node;
++    }
++
++    private function nextClockSeq(): int
++    {
++        if (self::$seedIndex === 0) {
++            if (self::$seed === null) {
++                try {
++                    self::$seed = random_bytes(16);
++                } catch (Throwable $exception) {
++                    throw new RandomSourceException(
++                        $exception->getMessage(),
++                        (int) $exception->getCode(),
++                        $exception
++                    );
++                }
++                self::$clockSeq = unpack('n', self::$seed)[1] & 0x3fff;
++            }
++
++            self::$seed = hash('sha512', self::$seed, true);
++
++            /** @var int[] $s */
++            $s = unpack('l*', self::$seed);
++            $s[] = ($s[1] >> 8 & 0xff0000) | ($s[2] >> 16 & 0xff00) | ($s[3] >> 24 & 0xff);
++            $s[] = ($s[4] >> 8 & 0xff0000) | ($s[5] >> 16 & 0xff00) | ($s[6] >> 24 & 0xff);
++            $s[] = ($s[7] >> 8 & 0xff0000) | ($s[8] >> 16 & 0xff00) | ($s[9] >> 24 & 0xff);
++            $s[] = ($s[10] >> 8 & 0xff0000) | ($s[11] >> 16 & 0xff00) | ($s[12] >> 24 & 0xff);
++            $s[] = ($s[13] >> 8 & 0xff0000) | ($s[14] >> 16 & 0xff00) | ($s[15] >> 24 & 0xff);
++
++            self::$seedParts = $s;
++            self::$seedIndex = 21;
++        }
++
++        self::$clockSeq = (self::$clockSeq + (self::$seedParts[self::$seedIndex--] & 0xffffff)) & 0x3fff;
++
++        return self::$clockSeq;
+     }
+ 
+     /**
+@@ -104,15 +144,16 @@ class DefaultTimeGenerator implements TimeGeneratorInterface
+             $node = $this->nodeProvider->getNode();
+         }
+ 
+-        // Convert the node to hex if it is still an integer.
+         if (is_int($node)) {
+             $node = dechex($node);
+         }
+ 
+-        if (!preg_match('/^[A-Fa-f0-9]+$/', (string) $node) || strlen((string) $node) > 12) {
++        $node = (string) $node;
++
++        if (!ctype_xdigit($node) || strlen($node) > 12) {
+             throw new InvalidArgumentException('Invalid node value');
+         }
+ 
+-        return (string) hex2bin(str_pad((string) $node, 12, '0', STR_PAD_LEFT));
++        return pack('H*', str_pad($node, 12, '0', STR_PAD_LEFT));
+     }
+ }
