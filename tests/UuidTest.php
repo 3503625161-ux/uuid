@@ -1248,6 +1248,67 @@ class UuidTest extends TestCase
         $factory->setValidator(new GenericValidator());
     }
 
+    /**
+     * @dataProvider provideGetVersionUuids
+     */
+    public function testGetVersion(string $uuid, ?int $expectedVersion): void
+    {
+        $this->assertSame($expectedVersion, Uuid::getVersion($uuid));
+    }
+
+    /**
+     * @return array<array{0: non-empty-string, 1: int | null}>
+     */
+    public function provideGetVersionUuids(): array
+    {
+        return [
+            ['ff6f8cb0-c57d-11e1-9b21-0800200c9a66', 1],
+            ['6fa459ea-ee8a-2ca4-894e-db77e160355e', 2],
+            ['6fa459ea-ee8a-3ca4-894e-db77e160355e', 3],
+            ['6fabf0bc-603a-42f2-925b-d9f779bd0032', 4],
+            ['886313e1-3b8a-5372-9b90-0c9aee199e5d', 5],
+            ['1ea78deb-37ce-625e-8f1a-025041000001', 6],
+            ['0188f41e-9b13-7700-8000-000000000003', 7],
+            ['0188f41e-9b13-8800-8000-000000000003', 8],
+            [Uuid::NIL, null],
+            [Uuid::MAX, null],
+            ['not-a-uuid', null],
+            ['', null],
+            ['ff6f8cb0-c57d-11e1-9b21', null],
+        ];
+    }
+
+    /**
+     * @dataProvider provideGetVariantUuids
+     */
+    public function testGetVariant(string $uuid, ?int $expectedVariant): void
+    {
+        $this->assertSame($expectedVariant, Uuid::getVariant($uuid));
+    }
+
+    /**
+     * @return array<array{0: non-empty-string, 1: int | null}>
+     */
+    public function provideGetVariantUuids(): array
+    {
+        return [
+            ['ff6f8cb0-c57d-11e1-0b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-7b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-8b21-0800200c9a66', Uuid::RFC_4122],
+            ['ff6f8cb0-c57d-11e1-9b21-0800200c9a66', Uuid::RFC_4122],
+            ['ff6f8cb0-c57d-11e1-ab21-0800200c9a66', Uuid::RFC_4122],
+            ['ff6f8cb0-c57d-11e1-bb21-0800200c9a66', Uuid::RFC_4122],
+            ['ff6f8cb0-c57d-11e1-cb21-0800200c9a66', Uuid::RESERVED_MICROSOFT],
+            ['ff6f8cb0-c57d-11e1-db21-0800200c9a66', Uuid::RESERVED_MICROSOFT],
+            ['ff6f8cb0-c57d-11e1-eb21-0800200c9a66', Uuid::RESERVED_FUTURE],
+            ['ff6f8cb0-c57d-11e1-fb21-0800200c9a66', Uuid::RESERVED_FUTURE],
+            [Uuid::NIL, Uuid::RESERVED_NCS],
+            [Uuid::MAX, Uuid::RESERVED_FUTURE],
+            ['not-a-uuid', null],
+            ['', null],
+        ];
+    }
+
     public function testUsingNilAsValidUuid(): void
     {
         self::assertSame(

@@ -1,0 +1,145 @@
+diff --git a/src/Uuid.php b/src/Uuid.php
+index 0f05bbf..b965631 100644
+--- a/src/Uuid.php
++++ b/src/Uuid.php
+@@ -582,6 +582,68 @@ class Uuid implements UuidInterface
+         return self::getFactory()->getValidator()->validate($uuid);
+     }
+ 
++    /**
++     * Returns the version number from a UUID string without instantiating an object
++     *
++     * Parses the version directly from the UUID string at position 14 (the first character of the third group).
++     *
++     * @param string $uuid A UUID string in the format xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
++     *
++     * @return int | null The version number (1-8), or null if the string is not a valid UUID, the Nil UUID, or the Max UUID
++     *
++     * @pure
++     */
++    public static function getVersion(string $uuid): ?int
++    {
++        if (!preg_match('/\A[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\z/', $uuid)) {
++            return null;
++        }
++
++        if ($uuid === self::NIL || $uuid === self::MAX) {
++            return null;
++        }
++
++        return hexdec($uuid[14]);
++    }
++
++    /**
++     * Returns the variant number from a UUID string without instantiating an object
++     *
++     * Parses the variant directly from the UUID string at position 19 (the first character of the fourth group).
++     *
++     * @param string $uuid A UUID string in the format xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
++     *
++     * @return int | null The variant number, or null if the string is not a valid UUID
++     *
++     * @pure
++     */
++    public static function getVariant(string $uuid): ?int
++    {
++        if (!preg_match('/\A[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\z/', $uuid)) {
++            return null;
++        }
++
++        if ($uuid === self::NIL) {
++            return self::RESERVED_NCS;
++        }
++
++        if ($uuid === self::MAX) {
++            return self::RESERVED_FUTURE;
++        }
++
++        $variantChar = hexdec($uuid[19]);
++
++        if ($variantChar >= 0x8 && $variantChar <= 0xb) {
++            return self::RFC_4122;
++        } elseif ($variantChar >= 0xc && $variantChar <= 0xd) {
++            return self::RESERVED_MICROSOFT;
++        } elseif ($variantChar >= 0xe) {
++            return self::RESERVED_FUTURE;
++        }
++
++        return self::RESERVED_NCS;
++    }
++
+     /**
+      * Returns a version 1 (Gregorian time) UUID from a host ID, sequence number, and the current time
+      *
+diff --git a/tests/UuidTest.php b/tests/UuidTest.php
+index 494f417..a30ccdf 100644
+--- a/tests/UuidTest.php
++++ b/tests/UuidTest.php
+@@ -1248,6 +1248,67 @@ class UuidTest extends TestCase
+         $factory->setValidator(new GenericValidator());
+     }
+ 
++    /**
++     * @dataProvider provideGetVersionUuids
++     */
++    public function testGetVersion(string $uuid, ?int $expectedVersion): void
++    {
++        $this->assertSame($expectedVersion, Uuid::getVersion($uuid));
++    }
++
++    /**
++     * @return array<array{0: non-empty-string, 1: int | null}>
++     */
++    public function provideGetVersionUuids(): array
++    {
++        return [
++            ['ff6f8cb0-c57d-11e1-9b21-0800200c9a66', 1],
++            ['6fa459ea-ee8a-2ca4-894e-db77e160355e', 2],
++            ['6fa459ea-ee8a-3ca4-894e-db77e160355e', 3],
++            ['6fabf0bc-603a-42f2-925b-d9f779bd0032', 4],
++            ['886313e1-3b8a-5372-9b90-0c9aee199e5d', 5],
++            ['1ea78deb-37ce-625e-8f1a-025041000001', 6],
++            ['0188f41e-9b13-7700-8000-000000000003', 7],
++            ['0188f41e-9b13-8800-8000-000000000003', 8],
++            [Uuid::NIL, null],
++            [Uuid::MAX, null],
++            ['not-a-uuid', null],
++            ['', null],
++            ['ff6f8cb0-c57d-11e1-9b21', null],
++        ];
++    }
++
++    /**
++     * @dataProvider provideGetVariantUuids
++     */
++    public function testGetVariant(string $uuid, ?int $expectedVariant): void
++    {
++        $this->assertSame($expectedVariant, Uuid::getVariant($uuid));
++    }
++
++    /**
++     * @return array<array{0: non-empty-string, 1: int | null}>
++     */
++    public function provideGetVariantUuids(): array
++    {
++        return [
++            ['ff6f8cb0-c57d-11e1-0b21-0800200c9a66', Uuid::RESERVED_NCS],
++            ['ff6f8cb0-c57d-11e1-7b21-0800200c9a66', Uuid::RESERVED_NCS],
++            ['ff6f8cb0-c57d-11e1-8b21-0800200c9a66', Uuid::RFC_4122],
++            ['ff6f8cb0-c57d-11e1-9b21-0800200c9a66', Uuid::RFC_4122],
++            ['ff6f8cb0-c57d-11e1-ab21-0800200c9a66', Uuid::RFC_4122],
++            ['ff6f8cb0-c57d-11e1-bb21-0800200c9a66', Uuid::RFC_4122],
++            ['ff6f8cb0-c57d-11e1-cb21-0800200c9a66', Uuid::RESERVED_MICROSOFT],
++            ['ff6f8cb0-c57d-11e1-db21-0800200c9a66', Uuid::RESERVED_MICROSOFT],
++            ['ff6f8cb0-c57d-11e1-eb21-0800200c9a66', Uuid::RESERVED_FUTURE],
++            ['ff6f8cb0-c57d-11e1-fb21-0800200c9a66', Uuid::RESERVED_FUTURE],
++            [Uuid::NIL, Uuid::RESERVED_NCS],
++            [Uuid::MAX, Uuid::RESERVED_FUTURE],
++            ['not-a-uuid', null],
++            ['', null],
++        ];
++    }
++
+     public function testUsingNilAsValidUuid(): void
+     {
+         self::assertSame(

@@ -583,6 +583,68 @@ class Uuid implements UuidInterface
     }
 
     /**
+     * Returns the version number from a UUID string without instantiating an object
+     *
+     * Parses the version directly from the UUID string at position 14 (the first character of the third group).
+     *
+     * @param string $uuid A UUID string in the format xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+     *
+     * @return int | null The version number (1-8), or null if the string is not a valid UUID, the Nil UUID, or the Max UUID
+     *
+     * @pure
+     */
+    public static function getVersion(string $uuid): ?int
+    {
+        if (!preg_match('/\A[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\z/', $uuid)) {
+            return null;
+        }
+
+        if ($uuid === self::NIL || $uuid === self::MAX) {
+            return null;
+        }
+
+        return hexdec($uuid[14]);
+    }
+
+    /**
+     * Returns the variant number from a UUID string without instantiating an object
+     *
+     * Parses the variant directly from the UUID string at position 19 (the first character of the fourth group).
+     *
+     * @param string $uuid A UUID string in the format xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+     *
+     * @return int | null The variant number, or null if the string is not a valid UUID
+     *
+     * @pure
+     */
+    public static function getVariant(string $uuid): ?int
+    {
+        if (!preg_match('/\A[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\z/', $uuid)) {
+            return null;
+        }
+
+        if ($uuid === self::NIL) {
+            return self::RESERVED_NCS;
+        }
+
+        if ($uuid === self::MAX) {
+            return self::RESERVED_FUTURE;
+        }
+
+        $variantChar = hexdec($uuid[19]);
+
+        if ($variantChar >= 0x8 && $variantChar <= 0xb) {
+            return self::RFC_4122;
+        } elseif ($variantChar >= 0xc && $variantChar <= 0xd) {
+            return self::RESERVED_MICROSOFT;
+        } elseif ($variantChar >= 0xe) {
+            return self::RESERVED_FUTURE;
+        }
+
+        return self::RESERVED_NCS;
+    }
+
+    /**
      * Returns a version 1 (Gregorian time) UUID from a host ID, sequence number, and the current time
      *
      * @param Hexadecimal | int | string | null $node A 48-bit number representing the hardware address; this number may
