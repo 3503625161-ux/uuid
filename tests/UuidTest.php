@@ -1933,4 +1933,184 @@ class UuidTest extends TestCase
             ['uuid5', [Uuid::NIL, 'foobar']],
         ];
     }
+
+    /**
+     * @param non-empty-string $uuid
+     *
+     * @dataProvider provideVersionUuids
+     */
+    public function testGetVersionStatic(string $uuid, int $expectedVersion): void
+    {
+        $this->assertSame($expectedVersion, Uuid::getVersion($uuid));
+    }
+
+    /**
+     * @return array<array{0: non-empty-string, 1: int}>
+     */
+    public function provideVersionUuids(): array
+    {
+        return [
+            ['ff6f8cb0-c57d-11e1-9b21-0800200c9a66', 1],
+            ['6fa459ea-ee8a-2ca4-894e-db77e160355e', 2],
+            ['6fa459ea-ee8a-3ca4-894e-db77e160355e', 3],
+            ['6fabf0bc-603a-42f2-925b-d9f779bd0032', 4],
+            ['886313e1-3b8a-5372-9b90-0c9aee199e5d', 5],
+            ['1e1c57df-f6f8-6cb0-9b21-0800200c9a66', 6],
+            ['01889a08-4559-7e01-8e53-14f0f943a2073', 7],
+            ['00112233-4455-8677-8899-aabbccddeeff', 8],
+        ];
+    }
+
+    public function testGetVersionStaticIsCaseInsensitive(): void
+    {
+        $this->assertSame(
+            4,
+            Uuid::getVersion('FF6F8CB0-C57D-41E1-9B21-0800200C9A66'),
+        );
+    }
+
+    /**
+     * @param string $uuid
+     *
+     * @dataProvider provideInvalidVersionInputs
+     */
+    public function testGetVersionStaticReturnsNullForInvalidInput(string $uuid): void
+    {
+        $this->assertNull(Uuid::getVersion($uuid));
+    }
+
+    /**
+     * @return array<array{0: string}>
+     */
+    public function provideInvalidVersionInputs(): array
+    {
+        return [
+            [''],
+            ['not-a-uuid'],
+            ['ff6f8cb0-c57d-11e1-9b21'],
+            ['ff6f8cb0c57d11e19b210800200c9a6'],
+            ['{ff6f8cb0-c57d-01e1-9b21-0800200c9a66'],
+        ];
+    }
+
+    public function testGetVersionStaticReturnsNullForNilUuid(): void
+    {
+        $this->assertNull(Uuid::getVersion(Uuid::NIL));
+    }
+
+    public function testGetVersionStaticReturnsNullForMaxUuid(): void
+    {
+        $this->assertNull(Uuid::getVersion(Uuid::MAX));
+    }
+
+    public function testGetVersionStaticReturnsNullForUnknownVersionNibble(): void
+    {
+        $this->assertNull(Uuid::getVersion('ff6f8cb0-c57d-91e1-9b21-0800200c9a66'));
+    }
+
+    public function testGetVersionStaticDoesNotInstantiateUuid(): void
+    {
+        $uuidString = 'ff6f8cb0-c57d-41e1-9b21-0800200c9a66';
+        $version = Uuid::getVersion($uuidString);
+
+        $this->assertSame(4, $version);
+        $this->assertSame('ff6f8cb0-c57d-41e1-9b21-0800200c9a66', $uuidString);
+    }
+
+    /**
+     * @param non-empty-string $uuid
+     *
+     * @dataProvider provideVariantUuids
+     */
+    public function testGetVariantStatic(string $uuid, int $expectedVariant): void
+    {
+        $this->assertSame($expectedVariant, Uuid::getVariant($uuid));
+    }
+
+    /**
+     * @return array<array{0: non-empty-string, 1: int}>
+     */
+    public function provideVariantUuids(): array
+    {
+        return [
+            ['ff6f8cb0-c57d-11e1-0b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-1b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-2b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-3b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-4b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-5b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-6b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-7b21-0800200c9a66', Uuid::RESERVED_NCS],
+            ['ff6f8cb0-c57d-11e1-8b21-0800200c9a66', Uuid::RFC_4122],
+            ['ff6f8cb0-c57d-11e1-9b21-0800200c9a66', Uuid::RFC_4122],
+            ['ff6f8cb0-c57d-11e1-ab21-0800200c9a66', Uuid::RFC_4122],
+            ['ff6f8cb0-c57d-11e1-bb21-0800200c9a66', Uuid::RFC_4122],
+            ['ff6f8cb0-c57d-11e1-cb21-0800200c9a66', Uuid::RESERVED_MICROSOFT],
+            ['ff6f8cb0-c57d-11e1-db21-0800200c9a66', Uuid::RESERVED_MICROSOFT],
+            ['ff6f8cb0-c57d-11e1-eb21-0800200c9a66', Uuid::RESERVED_FUTURE],
+            ['ff6f8cb0-c57d-11e1-fb21-0800200c9a66', Uuid::RESERVED_FUTURE],
+        ];
+    }
+
+    public function testGetVariantStaticIsCaseInsensitive(): void
+    {
+        $this->assertSame(
+            Uuid::RFC_4122,
+            Uuid::getVariant('FF6F8CB0-C57D-41E1-9B21-0800200C9A66'),
+        );
+    }
+
+    /**
+     * @param string $uuid
+     *
+     * @dataProvider provideInvalidVersionInputs
+     */
+    public function testGetVariantStaticReturnsNullForInvalidInput(string $uuid): void
+    {
+        $this->assertNull(Uuid::getVariant($uuid));
+    }
+
+    public function testGetVariantStaticForNilUuid(): void
+    {
+        $this->assertSame(Uuid::RESERVED_NCS, Uuid::getVariant(Uuid::NIL));
+    }
+
+    public function testGetVariantStaticForMaxUuid(): void
+    {
+        $this->assertSame(Uuid::RESERVED_FUTURE, Uuid::getVariant(Uuid::MAX));
+    }
+
+    public function testGetVariantStaticMatchesInstanceVariantFromParsed(): void
+    {
+        $uuids = [
+            'ff6f8cb0-c57d-11e1-9b21-0800200c9a66',
+            'ff6f8cb0-c57d-21e1-0b21-0800200c9a66',
+            'ff6f8cb0-c57d-31e1-cb21-0800200c9a66',
+            'ff6f8cb0-c57d-41e1-fb21-0800200c9a66',
+        ];
+
+        foreach ($uuids as $uuid) {
+            $this->assertSame(
+                Uuid::fromString($uuid)->getVariant(),
+                Uuid::getVariant($uuid),
+            );
+        }
+    }
+
+    public function testGetVersionStaticMatchesInstanceVersion(): void
+    {
+        $uuids = [
+            'ff6f8cb0-c57d-11e1-9b21-0800200c9a66',
+            '6fa459ea-ee8a-3ca4-894e-db77e160355e',
+            '6fabf0bc-603a-42f2-925b-d9f779bd0032',
+            '886313e1-3b8a-5372-9b90-0c9aee199e5d',
+        ];
+
+        foreach ($uuids as $uuid) {
+            $this->assertSame(
+                Uuid::fromString($uuid)->getVersion(),
+                Uuid::getVersion($uuid),
+            );
+        }
+    }
 }

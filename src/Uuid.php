@@ -583,6 +583,91 @@ class Uuid implements UuidInterface
     }
 
     /**
+     * Returns the version of the UUID, parsed directly from the string, or
+     * null if the provided string is not a valid UUID
+     *
+     * This is a lightweight, string-only operation that does not instantiate
+     * a UUID object, making it suitable for bulk scanning of UUID strings.
+     *
+     * For the standard dashed UUID representation
+     * `xxxxxxxx-xxxx-Vxxx-Yxxx-xxxxxxxxxxxx`, the version digit `V` is located
+     * at the 14th character (0-indexed position 14).
+     *
+     * @param string $uuid A string to parse the version from
+     *
+     * @return int|null The UUID version (1-8) or null if the string is not
+     *     a valid UUID, or if the version nibble falls outside the range
+     *     of known versions (e.g. for a Nil/Max UUID).
+     *
+     * @pure
+     */
+    public static function getVersion(string $uuid): ?int
+    {
+        $uuid = strtolower($uuid);
+
+        if (preg_match(LazyUuidFromString::VALID_REGEX, $uuid) !== 1) {
+            return null;
+        }
+
+        $version = (int) $uuid[14];
+
+        if ($version < 1 || $version > 8) {
+            return null;
+        }
+
+        return $version;
+    }
+
+    /**
+     * Returns the variant of the UUID, parsed directly from the string, or
+     * null if the provided string is not a valid UUID
+     *
+     * This is a lightweight, string-only operation that does not instantiate
+     * a UUID object, making it suitable for bulk scanning of UUID strings.
+     *
+     * For the standard dashed UUID representation
+     * `xxxxxxxx-xxxx-Vxxx-Yxxx-xxxxxxxxxxxx`, the variant nibble `Y` is
+     * located at the 19th character (0-indexed position 19).
+     *
+     * The variant is decoded from the 3 most significant bits of this nibble:
+     *  - `0xx` → {@see Uuid::RESERVED_NCS} (0)
+     *  - `10x` → {@see Uuid::RFC_4122} / {@see Uuid::RFC_9562} (2)
+     *  - `110` → {@see Uuid::RESERVED_MICROSOFT} (6)
+     *  - `111` → {@see Uuid::RESERVED_FUTURE} (7)
+     *
+     * @param string $uuid A string to parse the variant from
+     *
+     * @return int|null One of the {@see Uuid} variant constants, or null if
+     *     the string is not a valid UUID.
+     *
+     * @pure
+     */
+    public static function getVariant(string $uuid): ?int
+    {
+        $uuid = strtolower($uuid);
+
+        if (preg_match(LazyUuidFromString::VALID_REGEX, $uuid) !== 1) {
+            return null;
+        }
+
+        $nibble = hexdec($uuid[19]);
+
+        if (($nibble & 0x8) === 0) {
+            return self::RESERVED_NCS;
+        }
+
+        if (($nibble & 0x4) === 0) {
+            return self::RFC_4122;
+        }
+
+        if (($nibble & 0x2) === 0) {
+            return self::RESERVED_MICROSOFT;
+        }
+
+        return self::RESERVED_FUTURE;
+    }
+
+    /**
      * Returns a version 1 (Gregorian time) UUID from a host ID, sequence number, and the current time
      *
      * @param Hexadecimal | int | string | null $node A 48-bit number representing the hardware address; this number may
