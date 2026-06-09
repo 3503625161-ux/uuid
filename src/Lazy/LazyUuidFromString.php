@@ -236,6 +236,11 @@ final class LazyUuidFromString implements UuidInterface
         return ($this->unwrapped ?? $this->unwrap())->getInteger();
     }
 
+    public function getUnixTimestamp(): ?int
+    {
+        return ($this->unwrapped ?? $this->unwrap())->getUnixTimestamp();
+    }
+
     public function toString(): string
     {
         return $this->uuid;

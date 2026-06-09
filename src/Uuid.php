@@ -30,6 +30,7 @@ use ValueError;
 
 use function assert;
 use function bin2hex;
+use function hexdec;
 use function method_exists;
 use function preg_match;
 use function sprintf;
@@ -403,6 +404,20 @@ class Uuid implements UuidInterface
     public function getUrn(): string
     {
         return 'urn:uuid:' . $this->toString();
+    }
+
+    /**
+     * Returns the millisecond Unix timestamp for a version 7 UUID
+     *
+     * @return int | null The millisecond Unix timestamp, or null if the UUID is not version 7
+     */
+    public function getUnixTimestamp(): ?int
+    {
+        if ($this->fields->getVersion() !== self::UUID_TYPE_UNIX_TIME) {
+            return null;
+        }
+
+        return (int) hexdec(substr($this->fields->getTimestamp()->toString(), -12));
     }
 
     /**

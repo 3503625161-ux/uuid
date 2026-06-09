@@ -1,0 +1,88 @@
+diff --git a/src/Lazy/LazyUuidFromString.php b/src/Lazy/LazyUuidFromString.php
+index 8d3129c..faf41ab 100644
+--- a/src/Lazy/LazyUuidFromString.php
++++ b/src/Lazy/LazyUuidFromString.php
+@@ -236,6 +236,11 @@ final class LazyUuidFromString implements UuidInterface
+         return ($this->unwrapped ?? $this->unwrap())->getInteger();
+     }
+ 
++    public function getUnixTimestamp(): ?int
++    {
++        return ($this->unwrapped ?? $this->unwrap())->getUnixTimestamp();
++    }
++
+     public function toString(): string
+     {
+         return $this->uuid;
+diff --git a/src/Uuid.php b/src/Uuid.php
+index 0f05bbf..50d8d20 100644
+--- a/src/Uuid.php
++++ b/src/Uuid.php
+@@ -30,6 +30,7 @@ use ValueError;
+ 
+ use function assert;
+ use function bin2hex;
++use function hexdec;
+ use function method_exists;
+ use function preg_match;
+ use function sprintf;
+@@ -405,6 +406,20 @@ class Uuid implements UuidInterface
+         return 'urn:uuid:' . $this->toString();
+     }
+ 
++    /**
++     * Returns the millisecond Unix timestamp for a version 7 UUID
++     *
++     * @return int | null The millisecond Unix timestamp, or null if the UUID is not version 7
++     */
++    public function getUnixTimestamp(): ?int
++    {
++        if ($this->fields->getVersion() !== self::UUID_TYPE_UNIX_TIME) {
++            return null;
++        }
++
++        return (int) hexdec(substr($this->fields->getTimestamp()->toString(), -12));
++    }
++
+     /**
+      * @return non-empty-string
+      */
+diff --git a/src/UuidInterface.php b/src/UuidInterface.php
+index 38525cb..ff11dd5 100644
+--- a/src/UuidInterface.php
++++ b/src/UuidInterface.php
+@@ -90,6 +90,13 @@ interface UuidInterface extends
+      */
+     public function getUrn(): string;
+ 
++    /**
++     * Returns the millisecond Unix timestamp for a version 7 UUID
++     *
++     * @return int | null The millisecond Unix timestamp, or null if the UUID is not version 7
++     */
++    public function getUnixTimestamp(): ?int;
++
+     /**
+      * Returns the string standard representation of the UUID
+      *
+diff --git a/tests/UuidTest.php b/tests/UuidTest.php
+index 494f417..d782b28 100644
+--- a/tests/UuidTest.php
++++ b/tests/UuidTest.php
+@@ -493,6 +493,16 @@ class UuidTest extends TestCase
+         $this->assertSame('urn:uuid:ff6f8cb0-c57d-11e1-9b21-0800200c9a66', $uuid->getUrn());
+     }
+ 
++    public function testGetUnixTimestamp(): void
++    {
++        $uuid = Uuid::uuid7();
++
++        $this->assertGreaterThan(0, $uuid->getUnixTimestamp());
++        $this->assertNull(Uuid::uuid1()->getUnixTimestamp());
++        $this->assertNull(Uuid::uuid4()->getUnixTimestamp());
++        $this->assertNull(Uuid::uuid6()->getUnixTimestamp());
++    }
++
+     /**
+      * @param non-empty-string $uuid
+      *

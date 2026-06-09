@@ -91,6 +91,13 @@ interface UuidInterface extends
     public function getUrn(): string;
 
     /**
+     * Returns the millisecond Unix timestamp for a version 7 UUID
+     *
+     * @return int | null The millisecond Unix timestamp, or null if the UUID is not version 7
+     */
+    public function getUnixTimestamp(): ?int;
+
+    /**
      * Returns the string standard representation of the UUID
      *
      * @return non-empty-string

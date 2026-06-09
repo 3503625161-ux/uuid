@@ -493,6 +493,16 @@ class UuidTest extends TestCase
         $this->assertSame('urn:uuid:ff6f8cb0-c57d-11e1-9b21-0800200c9a66', $uuid->getUrn());
     }
 
+    public function testGetUnixTimestamp(): void
+    {
+        $uuid = Uuid::uuid7();
+
+        $this->assertGreaterThan(0, $uuid->getUnixTimestamp());
+        $this->assertNull(Uuid::uuid1()->getUnixTimestamp());
+        $this->assertNull(Uuid::uuid4()->getUnixTimestamp());
+        $this->assertNull(Uuid::uuid6()->getUnixTimestamp());
+    }
+
     /**
      * @param non-empty-string $uuid
      *
