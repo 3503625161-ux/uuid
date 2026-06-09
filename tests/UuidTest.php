@@ -22,6 +22,7 @@ use Ramsey\Uuid\Exception\InvalidArgumentException;
 use Ramsey\Uuid\Exception\InvalidUuidStringException;
 use Ramsey\Uuid\Exception\UnsupportedOperationException;
 use Ramsey\Uuid\FeatureSet;
+use Ramsey\Uuid\FeatureSetBuilder;
 use Ramsey\Uuid\Generator\CombGenerator;
 use Ramsey\Uuid\Generator\RandomGeneratorFactory;
 use Ramsey\Uuid\Generator\RandomGeneratorInterface;
@@ -115,7 +116,7 @@ class UuidTest extends TestCase
     {
         $uuid = Uuid::fromString('ff6f8cb0-c57d-11e1-9b21-0800200c9a66');
 
-        Uuid::setFactory(new UuidFactory(new FeatureSet(true)));
+        Uuid::setFactory(new UuidFactory(FeatureSetBuilder::fromDefaults(useGuids: true)->build()));
 
         $guid = Guid::fromString('ff6f8cb0-c57d-11e1-9b21-0800200c9a66');
 
@@ -673,7 +674,7 @@ class UuidTest extends TestCase
 
     public function testUuid1WithRandomNode(): void
     {
-        Uuid::setFactory(new UuidFactory(new FeatureSet(false, false, false, true)));
+        Uuid::setFactory(new UuidFactory(FeatureSetBuilder::fromDefaults(enablePecl: true)->build()));
 
         $uuid = Uuid::uuid1();
         $this->assertSame(2, $uuid->getVariant());
@@ -740,7 +741,7 @@ class UuidTest extends TestCase
 
     public function testUuid6WithRandomNode(): void
     {
-        Uuid::setFactory(new UuidFactory(new FeatureSet(false, false, false, true)));
+        Uuid::setFactory(new UuidFactory(FeatureSetBuilder::fromDefaults(enablePecl: true)->build()));
 
         $uuid = Uuid::uuid6();
         $this->assertSame(2, $uuid->getVariant());
@@ -1118,8 +1119,9 @@ class UuidTest extends TestCase
     {
         $timeOfDay = new FixedTimeProvider(new Time(1348845514, 277885));
 
-        $featureSet = new FeatureSet();
-        $featureSet->setTimeProvider($timeOfDay);
+        $featureSet = FeatureSetBuilder::fromDefaults()
+            ->withTimeProvider($timeOfDay)
+            ->build();
 
         // For usec = 277885
         Uuid::setFactory(new UuidFactory($featureSet));
@@ -1154,8 +1156,9 @@ class UuidTest extends TestCase
         // 5235-03-31T21:20:59+00:00
         $timeOfDay = new FixedTimeProvider(new Time('103072857659', '999999'));
 
-        $featureSet = new FeatureSet();
-        $featureSet->setTimeProvider($timeOfDay);
+        $featureSet = FeatureSetBuilder::fromDefaults()
+            ->withTimeProvider($timeOfDay)
+            ->build();
 
         Uuid::setFactory(new UuidFactory($featureSet));
         $uuidA = Uuid::uuid1(0x00007ffffffe, 0x1669);
@@ -1168,9 +1171,11 @@ class UuidTest extends TestCase
         // 1582-10-15T00:00:00+00:00
         $timeOfDay = new FixedTimeProvider(new Time('-12219292800', '0'));
 
-        $featureSet->setTimeProvider($timeOfDay);
+        $featureSet2 = FeatureSetBuilder::fromDefaults()
+            ->withTimeProvider($timeOfDay)
+            ->build();
 
-        Uuid::setFactory(new UuidFactory($featureSet));
+        Uuid::setFactory(new UuidFactory($featureSet2));
         $uuidB = Uuid::uuid1(0x00007ffffffe, 0x1669);
 
         $this->assertSame('00000000-0000-1000-9669-00007ffffffe', (string) $uuidB);
@@ -1190,13 +1195,15 @@ class UuidTest extends TestCase
 
         $timeOfDay = new FixedTimeProvider(new Time($currentTime, 0));
 
-        $smallIntFeatureSet = new FeatureSet(false, true);
-        $smallIntFeatureSet->setTimeProvider($timeOfDay);
+        $smallIntFeatureSet = FeatureSetBuilder::fromDefaults(force32Bit: true)
+            ->withTimeProvider($timeOfDay)
+            ->build();
 
         $smallIntFactory = new UuidFactory($smallIntFeatureSet);
 
-        $featureSet = new FeatureSet();
-        $featureSet->setTimeProvider($timeOfDay);
+        $featureSet = FeatureSetBuilder::fromDefaults()
+            ->withTimeProvider($timeOfDay)
+            ->build();
 
         $factory = new UuidFactory($featureSet);
 
@@ -1274,8 +1281,8 @@ class UuidTest extends TestCase
 
     public function testGuidBytesMatchesUuidWithSameString(): void
     {
-        $uuidFactory = new UuidFactory(new FeatureSet(false));
-        $guidFactory = new UuidFactory(new FeatureSet(true));
+        $uuidFactory = new UuidFactory(FeatureSetBuilder::fromDefaults(useGuids: false)->build());
+        $guidFactory = new UuidFactory(FeatureSetBuilder::fromDefaults(useGuids: true)->build());
 
         $uuid = $uuidFactory->fromString('ff6f8cb0-c57d-11e1-9b21-0800200c9a66');
         $bytes = $uuid->getBytes();
@@ -1294,7 +1301,7 @@ class UuidTest extends TestCase
 
     public function testGuidBytesProducesSameGuidString(): void
     {
-        $guidFactory = new UuidFactory(new FeatureSet(true));
+        $guidFactory = new UuidFactory(FeatureSetBuilder::fromDefaults(useGuids: true)->build());
 
         $guid = $guidFactory->fromString('ff6f8cb0-c57d-11e1-9b21-0800200c9a66');
         $bytes = $guid->getBytes();

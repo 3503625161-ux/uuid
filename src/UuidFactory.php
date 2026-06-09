@@ -70,7 +70,7 @@ class UuidFactory implements UuidFactoryInterface
     {
         $this->isDefaultFeatureSet = $features === null;
 
-        $features = $features ?: new FeatureSet();
+        $features = $features ?? FeatureSetBuilder::fromDefaults()->build();
 
         $this->codec = $features->getCodec();
         $this->dceSecurityGenerator = $features->getDceSecurityGenerator();

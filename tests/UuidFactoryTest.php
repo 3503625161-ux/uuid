@@ -14,11 +14,13 @@ use Ramsey\Uuid\Codec\CodecInterface;
 use Ramsey\Uuid\Converter\NumberConverterInterface;
 use Ramsey\Uuid\Converter\TimeConverterInterface;
 use Ramsey\Uuid\FeatureSet;
+use Ramsey\Uuid\FeatureSetBuilder;
 use Ramsey\Uuid\Generator\DceSecurityGeneratorInterface;
 use Ramsey\Uuid\Generator\DefaultNameGenerator;
 use Ramsey\Uuid\Generator\NameGeneratorInterface;
 use Ramsey\Uuid\Generator\RandomGeneratorInterface;
 use Ramsey\Uuid\Generator\TimeGeneratorInterface;
+use Ramsey\Uuid\Math\CalculatorInterface;
 use Ramsey\Uuid\Provider\NodeProviderInterface;
 use Ramsey\Uuid\Type\Hexadecimal;
 use Ramsey\Uuid\UuidFactory;
@@ -41,7 +43,7 @@ class UuidFactoryTest extends TestCase
 
     public function testParsesGuidCorrectly(): void
     {
-        $factory = new UuidFactory(new FeatureSet(true));
+        $factory = new UuidFactory(FeatureSetBuilder::fromDefaults(useGuids: true)->build());
 
         $uuid = $factory->fromString('ff6f8cb0-c57d-11e1-9b21-0800200c9a66');
 
@@ -53,7 +55,7 @@ class UuidFactoryTest extends TestCase
     {
         $uuidString = 'ff6f8cb0-c57d-11e1-9b21-0800200c9a66';
         $uuidUpper = strtoupper($uuidString);
-        $factory = new UuidFactory(new FeatureSet(true));
+        $factory = new UuidFactory(FeatureSetBuilder::fromDefaults(useGuids: true)->build());
 
         $uuid = $factory->fromString($uuidUpper);
 
@@ -73,20 +75,22 @@ class UuidFactoryTest extends TestCase
         $numberConverter = Mockery::mock(NumberConverterInterface::class);
         $builder = Mockery::mock(UuidBuilderInterface::class);
         $validator = Mockery::mock(ValidatorInterface::class);
+        $calculator = Mockery::mock(CalculatorInterface::class);
 
-        $featureSet = Mockery::mock(FeatureSet::class, [
-            'getCodec' => $codec,
-            'getNodeProvider' => $nodeProvider,
-            'getRandomGenerator' => $randomGenerator,
-            'getTimeConverter' => $timeConverter,
-            'getTimeGenerator' => $timeGenerator,
-            'getNameGenerator' => $nameGenerator,
-            'getDceSecurityGenerator' => $dceSecurityGenerator,
-            'getNumberConverter' => $numberConverter,
-            'getBuilder' => $builder,
-            'getValidator' => $validator,
-            'getUnixTimeGenerator' => $unixTimeGenerator,
-        ]);
+        $featureSet = new FeatureSet(
+            calculator: $calculator,
+            codec: $codec,
+            builder: $builder,
+            dceSecurityGenerator: $dceSecurityGenerator,
+            nameGenerator: $nameGenerator,
+            nodeProvider: $nodeProvider,
+            numberConverter: $numberConverter,
+            randomGenerator: $randomGenerator,
+            timeConverter: $timeConverter,
+            timeGenerator: $timeGenerator,
+            unixTimeGenerator: $unixTimeGenerator,
+            validator: $validator,
+        );
 
         $uuidFactory = new UuidFactory($featureSet);
         $this->assertSame(
