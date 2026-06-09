@@ -414,6 +414,20 @@ class Uuid implements UuidInterface
     }
 
     /**
+     * Returns the Unix timestamp (milliseconds) for version 7 UUIDs, or null for other versions
+     *
+     * @return int<0, max>|null Millisecond-precision Unix timestamp, or null if not a version 7 UUID
+     */
+    public function getUnixTimestamp(): ?int
+    {
+        if ($this->fields->getVersion() !== 7) {
+            return null;
+        }
+
+        return (int) hexdec(substr($this->fields->getTimestamp()->toString(), -12));
+    }
+
+    /**
      * Returns the factory used to create UUIDs
      */
     public static function getFactory(): UuidFactoryInterface

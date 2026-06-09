@@ -129,4 +129,16 @@ class UuidV7Test extends TestCase
 
         $uuid->getDateTime();
     }
+
+    public function testGetUnixTimestamp(): void
+    {
+        $uuid7 = Uuid::uuid7();
+        $timestamp = $uuid7->getUnixTimestamp();
+        $this->assertIsInt($timestamp);
+        $this->assertGreaterThan(0, $timestamp);
+
+        $this->assertNull(Uuid::uuid1()->getUnixTimestamp());
+        $this->assertNull(Uuid::uuid4()->getUnixTimestamp());
+        $this->assertNull(Uuid::uuid6()->getUnixTimestamp());
+    }
 }

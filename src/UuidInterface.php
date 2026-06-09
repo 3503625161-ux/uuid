@@ -100,6 +100,13 @@ interface UuidInterface extends
     public function toString(): string;
 
     /**
+     * Returns the Unix timestamp (milliseconds) for version 7 UUIDs, or null for other versions
+     *
+     * @return int<0, max>|null Millisecond-precision Unix timestamp, or null if not a version 7 UUID
+     */
+    public function getUnixTimestamp(): ?int;
+
+    /**
      * Casts the UUID to the string standard representation
      *
      * @return non-empty-string

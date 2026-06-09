@@ -1,0 +1,64 @@
+diff --git a/src/Uuid.php b/src/Uuid.php
+index 0f05bbf..8aa12cb 100644
+--- a/src/Uuid.php
++++ b/src/Uuid.php
+@@ -413,6 +413,20 @@ class Uuid implements UuidInterface
+         return $this->codec->encode($this);
+     }
+ 
++    /**
++     * Returns the Unix timestamp (milliseconds) for version 7 UUIDs, or null for other versions
++     *
++     * @return int<0, max>|null Millisecond-precision Unix timestamp, or null if not a version 7 UUID
++     */
++    public function getUnixTimestamp(): ?int
++    {
++        if ($this->fields->getVersion() !== 7) {
++            return null;
++        }
++
++        return (int) hexdec(substr($this->fields->getTimestamp()->toString(), -12));
++    }
++
+     /**
+      * Returns the factory used to create UUIDs
+      */
+diff --git a/src/UuidInterface.php b/src/UuidInterface.php
+index 38525cb..6993654 100644
+--- a/src/UuidInterface.php
++++ b/src/UuidInterface.php
+@@ -99,6 +99,13 @@ interface UuidInterface extends
+      */
+     public function toString(): string;
+ 
++    /**
++     * Returns the Unix timestamp (milliseconds) for version 7 UUIDs, or null for other versions
++     *
++     * @return int<0, max>|null Millisecond-precision Unix timestamp, or null if not a version 7 UUID
++     */
++    public function getUnixTimestamp(): ?int;
++
+     /**
+      * Casts the UUID to the string standard representation
+      *
+diff --git a/tests/Rfc4122/UuidV7Test.php b/tests/Rfc4122/UuidV7Test.php
+index fd3e5a4..ae00afb 100644
+--- a/tests/Rfc4122/UuidV7Test.php
++++ b/tests/Rfc4122/UuidV7Test.php
+@@ -129,4 +129,16 @@ class UuidV7Test extends TestCase
+ 
+         $uuid->getDateTime();
+     }
++
++    public function testGetUnixTimestamp(): void
++    {
++        $uuid7 = Uuid::uuid7();
++        $timestamp = $uuid7->getUnixTimestamp();
++        $this->assertIsInt($timestamp);
++        $this->assertGreaterThan(0, $timestamp);
++
++        $this->assertNull(Uuid::uuid1()->getUnixTimestamp());
++        $this->assertNull(Uuid::uuid4()->getUnixTimestamp());
++        $this->assertNull(Uuid::uuid6()->getUnixTimestamp());
++    }
+ }
